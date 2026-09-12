@@ -28,6 +28,11 @@ test("GitHub Actions verifies source, builds Unity, and uploads the APK", () => 
   assert.match(workflow, /secrets\.UNITY_LICENSE/);
 });
 
+test("GitHub Actions uses Node 24 for built-in SQLite integration tests", () => {
+  const workflow = read(".github/workflows/build-ar-debug-apk.yml");
+  assert.match(workflow, /^\s*node-version:\s*24\s*$/m);
+});
+
 test("GitHub Actions does not request an npm cache without a lock file", () => {
   const workflow = read(".github/workflows/build-ar-debug-apk.yml");
   assert.doesNotMatch(workflow, /^\s*cache:\s*npm\s*$/m);
