@@ -1,0 +1,11 @@
+{
+  "name": "bigimong-foundation",
+  "version": "0.11.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test",
+    "start": "node scripts/serve.mjs",
+    "server": "node server/start.mjs"
+  }
+}

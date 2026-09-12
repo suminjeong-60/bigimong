@@ -1,0 +1,10 @@
+/data/
+/build/
+/android/.gradle/
+/android/local.properties
+/android/**/build/
+/unity/BigimongAR/Library/
+/unity/BigimongAR/Temp/
+/unity/BigimongAR/Logs/
+/unity/BigimongAR/obj/
+*.iml

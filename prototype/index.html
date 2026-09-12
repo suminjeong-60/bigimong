@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>비기몽 전투 실험판</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="app-shell">
+    <header>
+      <p class="eyebrow">BIGI DRAGON · RULE PROTOTYPE</p>
+      <h1>서버대전 실험판</h1>
+      <p>성장 단계가 달라도 대전할 수 있으며, 10초 동안 선택하지 않으면 자동 플레이됩니다.</p>
+    </header>
+
+    <section class="wallet" aria-label="대전 정보">
+      <span>내 비기 <strong id="wallet">1,000</strong></span>
+      <span>배팅 <strong>100</strong></span>
+      <span>오늘 서버전투 <strong id="daily-count">0 / 20</strong></span>
+    </section>
+
+    <section class="arena" aria-label="대전장">
+      <article class="fighter mine" id="fighter-a">
+        <div class="stage-badge">성인기</div>
+        <div class="dragon" aria-hidden="true">🐲</div>
+        <h2>라온</h2>
+        <p>티라노사우루스 · 폭군의 송곳니</p>
+        <div class="hearts" id="hp-a" aria-label="라온 체력"></div>
+      </article>
+
+      <div class="versus">VS</div>
+
+      <article class="fighter opponent" id="fighter-b">
+        <div class="stage-badge">성장기</div>
+        <div class="dragon" aria-hidden="true">🦖</div>
+        <h2>모루</h2>
+        <p>트리케라톱스 · 대지의 돌진</p>
+        <div class="hearts" id="hp-b" aria-label="모루 체력"></div>
+      </article>
+    </section>
+
+    <section class="battle-log" aria-live="polite">
+      <strong id="role">대전을 시작해 주세요.</strong>
+      <span id="message">서버가 모든 방향과 피해를 판정합니다.</span>
+    </section>
+
+    <section class="controls">
+      <div class="timer"><span id="timer">10</span>초</div>
+      <div class="directions" aria-label="방향 선택">
+        <button type="button" data-direction="LEFT" disabled>왼쪽</button>
+        <button type="button" data-direction="CENTER" disabled>가운데</button>
+        <button type="button" data-direction="RIGHT" disabled>오른쪽</button>
+      </div>
+      <button type="button" id="start" class="start">100비기 서버대전 시작</button>
+    </section>
+  </main>
+  <script type="module" src="./app.js"></script>
+</body>
+</html>
