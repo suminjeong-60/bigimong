@@ -38,6 +38,11 @@ test("GitHub Actions does not request an npm cache without a lock file", () => {
   assert.doesNotMatch(workflow, /^\s*cache:\s*npm\s*$/m);
 });
 
+test("Unity manifest enables the Animation module required by ArBattleActor", () => {
+  const manifest = JSON.parse(read("unity/BigimongAR/Packages/manifest.json"));
+  assert.equal(manifest.dependencies["com.unity.modules.animation"], "1.0.0");
+});
+
 test("foundation package version matches the v0.11 APK", () => {
   const packageJson = JSON.parse(read("package.json"));
   assert.equal(packageJson.version, "0.11.0");
