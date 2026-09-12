@@ -28,6 +28,11 @@ test("GitHub Actions verifies source, builds Unity, and uploads the APK", () => 
   assert.match(workflow, /secrets\.UNITY_LICENSE/);
 });
 
+test("GitHub Actions does not request an npm cache without a lock file", () => {
+  const workflow = read(".github/workflows/build-ar-debug-apk.yml");
+  assert.doesNotMatch(workflow, /^\s*cache:\s*npm\s*$/m);
+});
+
 test("foundation package version matches the v0.11 APK", () => {
   const packageJson = JSON.parse(read("package.json"));
   assert.equal(packageJson.version, "0.11.0");
