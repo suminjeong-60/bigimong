@@ -78,6 +78,14 @@ jobs:
           buildMethod: Bigimong.Editor.BigimongAndroidBuild.BuildDebugApk
           versioning: None
 
+      - name: Make Unity build outputs writable
+        if: always()
+        shell: bash
+        run: |
+          if [ -d build ]; then
+            sudo chown -R "$(id -u):$(id -g)" build
+          fi
+
       - name: Set up Node.js for APK verification
         uses: actions/setup-node@v4
         with:
