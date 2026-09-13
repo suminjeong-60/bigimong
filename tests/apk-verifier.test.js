@@ -3,7 +3,7 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { verifyApk } from "../scripts/verify-apk.mjs";
+import { validateMetadata, verifyApk } from "../scripts/verify-apk.mjs";
 
 const validMetadata = {
   applicationId: "com.bigimong.app",
@@ -12,6 +12,20 @@ const validMetadata = {
   minSdk: "28",
   files: ["lib/arm64-v8a/libunity.so", "assets/bin/Data/globalgamemanagers"],
 };
+
+test("APK analyzer root-absolute paths match the ARM64 Unity library", () => {
+  assert.deepEqual(validateMetadata({
+    ...validMetadata,
+    files: ["/lib/arm64-v8a/libunity.so", "/assets/bin/Data/globalgamemanagers"],
+  }), []);
+});
+
+test("APK analyzer root-absolute paths still reject forbidden ABIs", () => {
+  assert.deepEqual(validateMetadata({
+    ...validMetadata,
+    files: ["/lib/arm64-v8a/libunity.so", "/lib/x86_64/libunity.so"],
+  }), ["forbidden native ABI x86_64"]);
+});
 
 function withTempApk(run) {
   const directory = mkdtempSync(join(tmpdir(), "bigimong-apk-"));

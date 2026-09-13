@@ -24,7 +24,7 @@ export function validateMetadata(metadata) {
     }
   }
 
-  const files = metadata.files.map(normalized);
+  const files = metadata.files.map((file) => normalized(file).replace(/^\/+/, ""));
   if (!files.includes(EXPECTED_APK.requiredUnityLibrary)) {
     errors.push(`missing ${EXPECTED_APK.requiredUnityLibrary}`);
   }
