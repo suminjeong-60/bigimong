@@ -20,13 +20,21 @@ namespace Bigimong.AR
         private GameObject arenaRoot;
         private GameObject ringVisual;
         private float requestedRingDiameter = 1.6f;
+        private bool placementEnabled = true;
 
         public event Action<Transform> ArenaPlaced;
         public bool IsPlaced => arenaRoot != null;
+        public Transform ArenaTransform => arenaRoot != null ? arenaRoot.transform : null;
+        public bool IsScreenFixed { get; private set; }
+        public void SetPlacementEnabled(bool enabled)
+        {
+            placementEnabled = enabled;
+            if (!enabled) placementIndicator?.SetActive(false);
+        }
 
         private void Update()
         {
-            if (IsPlaced) return;
+            if (IsPlaced || !placementEnabled) return;
             UpdateCandidate(new Vector2(Screen.width * 0.5f, Screen.height * 0.5f));
             if (Input.touchCount == 0) return;
             var touch = Input.GetTouch(0);
@@ -37,6 +45,7 @@ namespace Bigimong.AR
 
         public bool TryPlace(Vector2 screenPosition)
         {
+            if (!placementEnabled) return false;
             UpdateCandidate(screenPosition);
             if (!hasCandidate) return false;
             return PlaceAtPose(candidatePose);
@@ -44,9 +53,32 @@ namespace Bigimong.AR
 
         public bool PlaceAtPose(Pose pose)
         {
+            if (!placementEnabled) return false;
             if (arenaRoot != null) Destroy(arenaRoot);
+            IsScreenFixed = false;
             arenaRoot = new GameObject("Bigimong AR Arena");
             arenaRoot.transform.SetPositionAndRotation(pose.position, pose.rotation);
+            ringVisual = battleRingPrefab != null
+                ? Instantiate(battleRingPrefab, arenaRoot.transform)
+                : GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            ringVisual.name = "Battle Ring Visual";
+            ringVisual.transform.SetParent(arenaRoot.transform, false);
+            ApplyRingSize();
+            placementIndicator?.SetActive(false);
+            SetPlanesVisible(false);
+            ArenaPlaced?.Invoke(arenaRoot.transform);
+            return true;
+        }
+
+        public bool PlaceScreenFixed(Transform cameraTransform)
+        {
+            if (!placementEnabled || cameraTransform == null) return false;
+            if (arenaRoot != null) Destroy(arenaRoot);
+            arenaRoot = new GameObject("Bigimong Screen Fixed Arena");
+            arenaRoot.transform.SetParent(cameraTransform, false);
+            arenaRoot.transform.localPosition = new Vector3(0f, -0.8f, 1.8f);
+            arenaRoot.transform.localRotation = Quaternion.identity;
+            IsScreenFixed = true;
             ringVisual = battleRingPrefab != null
                 ? Instantiate(battleRingPrefab, arenaRoot.transform)
                 : GameObject.CreatePrimitive(PrimitiveType.Cylinder);
@@ -70,8 +102,9 @@ namespace Bigimong.AR
             if (arenaRoot != null) Destroy(arenaRoot);
             arenaRoot = null;
             ringVisual = null;
+            IsScreenFixed = false;
             hasCandidate = false;
-            placementIndicator?.SetActive(true);
+            placementIndicator?.SetActive(placementEnabled);
             SetPlanesVisible(true);
         }
 

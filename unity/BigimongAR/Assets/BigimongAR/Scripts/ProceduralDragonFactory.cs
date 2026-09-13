@@ -23,7 +23,7 @@ namespace Bigimong.AR
             var maturity = stage == "ADULT" ? 1f : stage == "YOUTH" ? 0.65f : 0.35f;
             var root = new GameObject($"Procedural_Bigimong_{artId:00}_{stage}");
             var baseColor = Color.HSVToRGB(Mathf.Repeat(artId * 0.113f, 1f), 0.58f, 0.95f);
-            var accentColor = Color.HSVToRGB(Mathf.Repeat(artId * 0.113f + 0.12f, 1f), 0.72f, 0.98f);
+            var accentColor = ElementSkillCatalog.Resolve(artId).secondaryColor;
             var bodyMaterial = MaterialFor(baseColor);
             var accentMaterial = MaterialFor(accentColor);
             var eyeMaterial = MaterialFor(new Color(0.055f, 0.04f, 0.03f));
@@ -53,7 +53,7 @@ namespace Bigimong.AR
             if (Plated.Contains(artId)) AddPlates(root.transform, accentMaterial, maturity);
             if (feathered) AddFeatherCrest(root.transform, headPosition, accentMaterial, maturity);
 
-            root.AddComponent<ArBattleActor>();
+            root.AddComponent<ArBattleActor>().OwnProceduralMaterials(bodyMaterial, accentMaterial, eyeMaterial);
             return root;
         }
 
@@ -133,7 +133,11 @@ namespace Bigimong.AR
             part.transform.localScale = scale;
             part.GetComponent<Renderer>().sharedMaterial = material;
             var collider = part.GetComponent<Collider>();
-            if (collider != null) Object.Destroy(collider);
+            if (collider != null)
+            {
+                collider.enabled = false;
+                if (Application.isPlaying) Object.Destroy(collider); else Object.DestroyImmediate(collider);
+            }
             return part;
         }
 
