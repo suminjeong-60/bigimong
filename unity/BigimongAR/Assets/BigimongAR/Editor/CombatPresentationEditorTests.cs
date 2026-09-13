@@ -25,8 +25,11 @@ namespace Bigimong.AR.EditorChecks
                 Require(vfx.ActiveCount == 0, "all effects must expire in bounded time");
                 vfx.PlayImpact(ElementSkillCatalog.Resolve(1), Vector3.zero);
                 Require(vfx.AllocatedCount == 32 && vfx.ActiveCount == 6, "expired slots must be reused");
-                vfx.enabled = false;
-                Require(vfx.ActiveCount == 0, "disable must release effects");
+                // Edit-mode components do not receive runtime OnDisable callbacks.
+                // Verify the release path OnDisable delegates to directly instead.
+                vfx.ReleaseAll();
+                Require(vfx.ActiveCount == 0, "release must clear active effects");
+                Require(host.GetComponentsInChildren<Transform>().Length == 1, "release must hide effect objects");
             }
             finally { UnityEngine.Object.DestroyImmediate(host); }
 
