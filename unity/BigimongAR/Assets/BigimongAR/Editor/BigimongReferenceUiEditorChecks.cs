@@ -20,9 +20,14 @@ namespace Bigimong.AR.EditorChecks
                     throw new InvalidOperationException($"Reference art has wrong size: {path} ({art.width}x{art.height})");
             }
 
-            foreach (var sheet in new[] { "gallery", "evolution-01" })
-                if (Resources.Load<Texture2D>("ReferenceUi/" + sheet) == null)
-                    throw new InvalidOperationException("Offline codex artwork is missing: " + sheet);
+            if (Resources.Load<Texture2D>("ReferenceUi/gallery") == null)
+                throw new InvalidOperationException("Offline codex gallery is missing");
+            for (var artId = 1; artId <= 30; artId++)
+            {
+                var path = "ReferenceUi/evolution-" + artId.ToString("00");
+                if (Resources.Load<Texture2D>(path) == null)
+                    throw new InvalidOperationException("Offline species illustration is missing: " + path);
+            }
 
             var view = UnityEngine.Object.FindObjectOfType<BigimongReferenceUi>();
             if (view == null) throw new InvalidOperationException("Reference screen controller is missing from the scene");

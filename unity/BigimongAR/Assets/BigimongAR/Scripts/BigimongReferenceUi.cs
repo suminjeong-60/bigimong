@@ -41,6 +41,7 @@ namespace Bigimong.AR
         private string screen;
         private bool started;
         private bool girl;
+        private bool galleryVisible = true;
         private float nextScreenAt;
         public string CurrentScreen => screen;
 
@@ -147,7 +148,7 @@ namespace Bigimong.AR
         private void Show(string target)
         {
             screen = target;
-            var art = IsArtwork(target) ? target : "home";
+            var art = IsArtwork(target) ? target : progress.hatched ? "home" : "egg";
             var path = "ReferenceUi/" + art;
             if (Array.IndexOf(ArtScreens, path) < 0)
             {
@@ -182,6 +183,7 @@ namespace Bigimong.AR
             Nav("설정", 897, 7, 120, 120);
             Nav("뒤로가기", 8, 1395, 143, 137);
             Nav("설정", 892, 1390, 133, 140);
+            if (target != "avatar") BuildCurrencyHud(art == "egg");
             if (target == "avatar")
             {
                 Nav("남자", 195, 1045, 280, 210);
@@ -333,8 +335,15 @@ namespace Bigimong.AR
                 else SaveAndShow("character");
                 return true;
             }
+            if (action == "전체 도감" && screen == "codex")
+            {
+                galleryVisible = !galleryVisible;
+                Show("codex");
+                return true;
+            }
             if (action == "이전 공룡" || action == "다음 공룡")
             {
+                galleryVisible = false;
                 progress.selectedArtId = 1 + ((progress.selectedArtId - 1 + (action == "다음 공룡" ? 1 : 29)) % 30);
                 if (flow.Phase == OfflineBetaPhase.PetTestSelect) flow.SelectPet(progress.selectedArtId);
                 SaveAndShow("codex");
@@ -365,6 +374,26 @@ namespace Bigimong.AR
             if (!OfflineReferenceProgressStore.Save(progress))
                 OpenDialogue("저장 오류", "기기에 진행 상태를 저장하지 못했어요. 저장 공간을 확인해 주세요.");
             else Show(target);
+        }
+
+        private void BuildCurrencyHud(bool egg)
+        {
+            if (egg)
+            {
+                var crown = Block("Game: Sample Crown", board, 424, 300, 204, 79, Cocoa);
+                Label("Game: Crown Availability", crown.transform, "연습", 0, 0, 204, 79, 31, Gold, 204, 79);
+                var coin = Block("Game: Real Egg Coins", board, 781, 299, 225, 83, Cocoa);
+                Label("Game: Coin Balance", coin.transform, progress.coins.ToString("N0"),
+                    0, 0, 225, 83, 39, Cream, 225, 83);
+            }
+            else
+            {
+                var crown = Block("Game: Sample Crown", board, 833, 263, 185, 66, Cocoa);
+                Label("Game: Crown Availability", crown.transform, "연습", 0, 0, 185, 66, 28, Gold, 185, 66);
+                var coin = Block("Game: Real Home Coins", board, 797, 452, 226, 135, Cocoa);
+                Label("Game: Coin Balance", coin.transform, progress.coins.ToString("N0") + "\\n비기코인",
+                    0, 0, 226, 135, 30, Cream, 226, 135);
+            }
         }
 
         private void BuildProgressHud(bool home)
@@ -448,12 +477,16 @@ namespace Bigimong.AR
                     Label("Game: Codex Selection", panel.transform,
                         progress.selectedArtId.ToString("00") + "  " + Species[progress.selectedArtId - 1] +
                         "\n30종 · AR 연습 대전에서 체험 가능", 60, 175, 710, 153, 32, Cream);
-                    var gallery = Resources.Load<Texture2D>("ReferenceUi/gallery");
-                    if (gallery != null) ImageCard("Game: 30 Dinosaurs", panel.transform, gallery,
+                    var codexArt = galleryVisible
+                        ? Resources.Load<Texture2D>("ReferenceUi/gallery")
+                        : Resources.Load<Texture2D>("ReferenceUi/evolution-" + progress.selectedArtId.ToString("00"));
+                    if (codexArt != null) ImageCard("Game: 30 Dinosaurs", panel.transform, codexArt,
                         45, 342, 740, 470, 830, 1025);
-                    ActionButton("이전 공룡", panel.transform, 42, 846, 220, 99, "이전", Gold, 830, 1025);
-                    ActionButton("연습 대전", panel.transform, 287, 846, 260, 99, "AR 연습", Orange, 830, 1025);
-                    ActionButton("다음 공룡", panel.transform, 569, 846, 220, 99, "다음", Gold, 830, 1025);
+                    ActionButton("이전 공룡", panel.transform, 34, 819, 232, 84, "이전", Gold, 830, 1025);
+                    ActionButton("전체 도감", panel.transform, 287, 819, 260, 84,
+                        galleryVisible ? "개별 보기" : "전체 보기", Cream, 830, 1025);
+                    ActionButton("다음 공룡", panel.transform, 569, 819, 232, 84, "다음", Gold, 830, 1025);
+                    ActionButton("연습 대전", panel.transform, 205, 930, 420, 81, "AR 연습 대전", Orange, 830, 1025);
                     break;
                 case "character":
                     Label("Game: Character Info", panel.transform,

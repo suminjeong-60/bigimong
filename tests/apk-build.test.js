@@ -57,9 +57,10 @@ test("GitHub Actions does not request an npm cache without a lock file", () => {
   assert.doesNotMatch(workflow, /^\s*cache:\s*npm\s*$/m);
 });
 
-test("Unity manifest enables the Animation module required by ArBattleActor", () => {
+test("Unity manifest enables Animation and Audio modules required by game actors and settings", () => {
   const manifest = JSON.parse(read("unity/BigimongAR/Packages/manifest.json"));
   assert.equal(manifest.dependencies["com.unity.modules.animation"], "1.0.0");
+  assert.equal(manifest.dependencies["com.unity.modules.audio"], "1.0.0");
 });
 
 test("foundation package version matches the v0.15 APK", () => {
