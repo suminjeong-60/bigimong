@@ -1,4 +1,6 @@
-# 비기몽 제작 기반 v0.12
+# 비기몽 제작 기반 v0.13
+
+이번 v0.13 변경 내용과 검증 범위: [참고 디자인·AR 구성](docs/AR_IMPLEMENTATION_v0.13.md).
 
 비기몽의 성장·재화·전투 규칙을 실제 코드로 검증하기 위한 프로젝트입니다.
 
@@ -93,14 +95,14 @@ Android 앱은 Android Studio에서 `android` 폴더를 엽니다. 에뮬레이�
 
 1. GitHub 저장소의 `Settings > Secrets and variables > Actions`에 `UNITY_LICENSE`, `UNITY_EMAIL`, `UNITY_PASSWORD`를 등록합니다.
 2. `Actions > Build Bigimong AR debug APK > Run workflow`를 실행합니다.
-3. 성공한 실행의 `Artifacts`에서 `Bigimong-AR-v0.12-debug`를 내려받습니다.
-4. 압축을 풀어 `Bigimong-AR-v0.12-debug.apk`를 ARCore 지원 Android 기기에 설치합니다.
+3. 성공한 실행의 `Artifacts`에서 `Bigimong-AR-v0.13-debug`를 내려받습니다.
+4. 압축을 풀어 `Bigimong-AR-v0.13-debug.apk`를 ARCore 지원 Android 기기에 설치합니다.
 
 성공 artifact에는 다음 세 파일이 있어야 합니다.
 
-- `Bigimong-AR-v0.12-debug.apk`
-- `Bigimong-AR-v0.12-verification.json`
-- `Bigimong-AR-v0.12-debug.apk.sha256`
+- `Bigimong-AR-v0.13-debug.apk`
+- `Bigimong-AR-v0.13-verification.json`
+- `Bigimong-AR-v0.13-debug.apk.sha256`
 
 JSON의 `valid`가 `true`인지 확인하고, 내려받은 APK의 SHA-256이 `.sha256` 파일 및 JSON의 `sha256` 값과 같은지 확인합니다. 실제 GitHub Actions 성공과 실기기 실행 전에는 이 저장소 상태를 “APK 빌드 소스 준비 완료”로만 판단합니다.
 
@@ -115,4 +117,4 @@ Unity 계정 비밀번호와 라이선스 본문은 저장소 파일, 이슈, �
 5. 실기기 2대로 BLE→Cloud Anchor→5라운드→정산 통합 테스트
 6. Play Integrity·이상 걸음 탐지·HTTPS·WebSocket 적용
 
-게임 규칙은 `docs/GAME_SPEC_v0.4.md`, 캐릭터 번호는 `docs/CHARACTER_CATALOG_v0.7.md`, AR 기본 계약은 `docs/AR_BATTLE_SPEC_v0.8.md`, 최신 AR 구현 내용은 `docs/AR_IMPLEMENTATION_v0.12.md`를 확인하세요.
+게임 규칙은 `docs/GAME_SPEC_v0.4.md`, 캐릭터 번호는 `docs/CHARACTER_CATALOG_v0.7.md`, AR 기본 계약은 `docs/AR_BATTLE_SPEC_v0.8.md`, 최신 AR 구현 내용은 `docs/AR_IMPLEMENTATION_v0.13.md`를 확인하세요.

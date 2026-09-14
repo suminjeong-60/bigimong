@@ -11,6 +11,8 @@ namespace Bigimong.AR
         [SerializeField] private Text countdownText;
         [SerializeField] private Text playerAHpText;
         [SerializeField] private Text playerBHpText;
+        [SerializeField] private Image playerAHpFill;
+        [SerializeField] private Image playerBHpFill;
         [SerializeField] private Text roundStatusText;
         [SerializeField] private Button leftButton;
         [SerializeField] private Button centerButton;
@@ -96,6 +98,8 @@ namespace Bigimong.AR
         {
             if (playerAHpText != null) playerAHpText.text = $"A  HP {Math.Max(0, hpA)}";
             if (playerBHpText != null) playerBHpText.text = $"B  HP {Math.Max(0, hpB)}";
+            if (playerAHpFill != null) playerAHpFill.fillAmount = Mathf.Clamp01(hpA / 5f);
+            if (playerBHpFill != null) playerBHpFill.fillAmount = Mathf.Clamp01(hpB / 5f);
             if (roundStatusText == null) return;
             roundStatusText.text = status == "FINISHED"
                 ? $"전투 종료 · {winner} 승리"

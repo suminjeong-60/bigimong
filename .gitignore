@@ -8,3 +8,6 @@
 /unity/BigimongAR/Logs/
 /unity/BigimongAR/obj/
 *.iml
+
+# User-supplied visual references stay private; never publish source images.
+docs/art-reference/*.png

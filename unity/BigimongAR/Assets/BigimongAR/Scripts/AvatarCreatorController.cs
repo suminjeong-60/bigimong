@@ -256,14 +256,43 @@ namespace Bigimong.AR
             {
                 preview = ProceduralAvatarFactory.Create(profile);
                 preview.transform.SetParent(previewAnchor, false);
-                preview.transform.localPosition = Vector3.zero;
-                preview.transform.localRotation = Quaternion.Euler(0, 180f, 0);
-                preview.transform.localScale = Vector3.one * 0.72f;
             }
             else
             {
                 ProceduralAvatarFactory.Apply(preview, profile);
             }
+            preview.transform.localRotation = Quaternion.Euler(0, 180f, 0);
+            FramePreview(preview);
+        }
+
+        private static void FramePreview(GameObject avatar)
+        {
+            avatar.transform.localPosition = Vector3.zero;
+            avatar.transform.localScale = Vector3.one;
+            var renderers = avatar.GetComponentsInChildren<Renderer>(true);
+            if (renderers.Length == 0) return;
+
+            var bounds = new Bounds();
+            var initialized = false;
+            foreach (var renderer in renderers)
+            {
+                var local = renderer.localBounds;
+                for (var corner = 0; corner < 8; corner++)
+                {
+                    var point = local.center + Vector3.Scale(local.extents, new Vector3(
+                        (corner & 1) == 0 ? -1f : 1f,
+                        (corner & 2) == 0 ? -1f : 1f,
+                        (corner & 4) == 0 ? -1f : 1f));
+                    point = avatar.transform.InverseTransformPoint(renderer.transform.TransformPoint(point));
+                    if (!initialized) { bounds = new Bounds(point, Vector3.zero); initialized = true; }
+                    else bounds.Encapsulate(point);
+                }
+            }
+
+            if (!initialized || bounds.size.x < .001f || bounds.size.y < .001f) return;
+            var scale = Mathf.Min(1.45f / bounds.size.x, 1.24f / bounds.size.y);
+            avatar.transform.localScale = Vector3.one * scale;
+            avatar.transform.localPosition = new Vector3(-bounds.center.x * scale, -bounds.min.y * scale, 0);
         }
 
         private void RefreshLabels()

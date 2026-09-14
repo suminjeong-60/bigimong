@@ -54,15 +54,15 @@ test("Android journey UI includes gift, egg, ready, reveal, and home phases", ()
   assert.match(api, /journey\/egg\/hatch/);
 });
 
-test("Android v0.12 uses the Bigimong brand, application id, and build version", () => {
+test("Android v0.13 uses the Bigimong brand, application id, and build version", () => {
   const strings = read("app/src/main/res/values/strings.xml");
   const gradle = read("app/build.gradle.kts");
   const ui = read("app/src/main/java/com/bigidragon/app/MainActivity.kt");
   assert.match(strings, /비기몽/);
   assert.match(ui, /Text\("비기몽"/);
   assert.match(gradle, /applicationId = "com\.bigimong\.app"/);
-  assert.match(gradle, /versionCode = 12/);
-  assert.match(gradle, /versionName = "0\.12\.0"/);
+  assert.match(gradle, /versionCode = 13/);
+  assert.match(gradle, /versionName = "0\.13\.0"/);
 });
 
 test("Android packages 30 characters across three stages and resolves them by art id", () => {

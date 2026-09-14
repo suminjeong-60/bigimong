@@ -40,6 +40,9 @@ namespace Bigimong.AR
             var eyeWhite = MaterialFor(new Color(0.98f, 0.97f, 0.94f), 0f, 0.62f);
             var eye = MaterialFor(AvatarCustomizationCatalog.ColorForEye(profile.eyeColorId), 0f, 0.68f);
             var pupil = MaterialFor(new Color(0.025f, 0.018f, 0.015f), 0f, 0.55f);
+            var eyeHighlight = MaterialFor(Color.white, 0f, 0.88f);
+            var cheek = MaterialFor(new Color(0.96f, 0.49f, 0.45f), 0f, 0.62f);
+            var smile = MaterialFor(new Color(0.36f, 0.12f, 0.10f), 0f, 0.48f);
             var outfit = MaterialFor(new Color(0.075f, 0.082f, 0.105f), 0f, 0.28f);
             var gold = MaterialFor(new Color(0.94f, 0.66f, 0.16f), 0.72f, 0.72f);
 
@@ -48,10 +51,13 @@ namespace Bigimong.AR
             var headScale = HeadScales[Mathf.Clamp(profile.faceShapeId, 1, HeadScales.Length) - 1];
             Part(avatarRoot.transform, PrimitiveType.Sphere, "Head", new Vector3(0, HeadCenterY, 0), headScale,
                 Quaternion.identity, skin);
-            CreateEyes(avatarRoot.transform, headScale, eyeWhite, eye, pupil);
+            CreateEyes(avatarRoot.transform, headScale, eyeWhite, eye, pupil, eyeHighlight);
+            CreateFace(avatarRoot.transform, headScale, skin, cheek, smile);
             CreateEyebrows(avatarRoot.transform, profile.eyebrowId, hair, headScale);
             CreateHair(avatarRoot.transform, profile.hairStyleId, hair, headScale);
             CreateSummoningMedallion(avatarRoot.transform, gold);
+            var cosmeticRoot = new GameObject("CosmeticRoot");
+            cosmeticRoot.transform.SetParent(avatarRoot.transform, false);
         }
 
         private static void CreateBody(Transform root, bool feminine, Material skin, Material outfit)
@@ -94,7 +100,8 @@ namespace Bigimong.AR
                 new Vector3(width * 1.12f, 0.11f, width * 1.65f), Quaternion.identity, skin);
         }
 
-        private static void CreateEyes(Transform root, Vector3 headScale, Material eyeWhite, Material iris, Material pupil)
+        private static void CreateEyes(Transform root, Vector3 headScale, Material eyeWhite, Material iris,
+            Material pupil, Material highlight)
         {
             foreach (var side in new[] { -1f, 1f })
             {
@@ -114,7 +121,41 @@ namespace Bigimong.AR
                 var pupilDepth = LayerDepth(irisDepth + irisScale.z * 0.5f, pupilScale.z, 0.55f);
                 Part(root, PrimitiveType.Sphere, "Pupil" + suffix, new Vector3(x, eyeY, pupilDepth),
                     pupilScale, Quaternion.identity, pupil);
+                var highlightScale = new Vector3(0.026f, 0.034f, 0.014f);
+                var highlightDepth = LayerDepth(pupilDepth + pupilScale.z * 0.5f, highlightScale.z, 0.52f);
+                Part(root, PrimitiveType.Sphere, "EyeHighlight" + suffix,
+                    new Vector3(x - side * 0.018f, eyeY + 0.041f, highlightDepth),
+                    highlightScale, Quaternion.identity, highlight);
             }
+        }
+
+        private static void CreateFace(Transform root, Vector3 headScale, Material skin, Material cheek, Material smile)
+        {
+            var noseScale = new Vector3(.11f, .095f, .085f);
+            var noseY = HeadCenterY - .075f;
+            var noseDepth = FeatureDepth(headScale, 0f, noseY - HeadCenterY, noseScale.z, .62f);
+            Part(root, PrimitiveType.Sphere, "Nose", new Vector3(0, noseY, noseDepth), noseScale,
+                Quaternion.identity, skin);
+
+            foreach (var side in new[] { -1f, 1f })
+            {
+                var x = side * headScale.x * .31f;
+                var y = HeadCenterY - .13f;
+                var scale = new Vector3(.13f, .075f, .026f);
+                var depth = FeatureDepth(headScale, x, y - HeadCenterY, scale.z, .42f);
+                Part(root, PrimitiveType.Sphere, side < 0 ? "CheekLeft" : "CheekRight",
+                    new Vector3(x, y, depth), scale, Quaternion.identity, cheek);
+            }
+
+            var smileY = HeadCenterY - .235f;
+            var smileScale = new Vector3(.022f, .115f, .018f);
+            var smileDepth = FeatureDepth(headScale, 0f, smileY - HeadCenterY, smileScale.z, .52f);
+            Part(root, PrimitiveType.Capsule, "Smile", new Vector3(0, smileY, smileDepth), smileScale,
+                Quaternion.Euler(0, 0, 90f), smile);
+            foreach (var side in new[] { -1f, 1f })
+                Part(root, PrimitiveType.Sphere, side < 0 ? "SmileCornerLeft" : "SmileCornerRight",
+                    new Vector3(side * .105f, smileY + .018f, smileDepth), Vector3.one * .022f,
+                    Quaternion.identity, smile);
         }
 
         private static void CreateEyebrows(Transform root, int eyebrowId, Material material, Vector3 headScale)
@@ -163,7 +204,7 @@ namespace Bigimong.AR
             AddHairCap(hairRoot.transform, material, headScale);
             switch (hairStyleId)
             {
-                case 1: AddFringe(hairRoot.transform, material, 3, -10f); break;
+                case 1: AddSweptQuiff(hairRoot.transform, material); break;
                 case 2: AddFringe(hairRoot.transform, material, 5, 16f); break;
                 case 3: AddSideLocks(hairRoot.transform, material, 0.32f); break;
                 case 4: AddBob(hairRoot.transform, material); break;
@@ -176,6 +217,13 @@ namespace Bigimong.AR
                 case 11: AddPixie(hairRoot.transform, material); break;
                 case 12: AddTwinTails(hairRoot.transform, material); break;
             }
+        }
+
+        private static void AddSweptQuiff(Transform root, Material material)
+        {
+            for (var index = 0; index < 5; index++)
+                Part(root, PrimitiveType.Capsule, "SweptQuiff", new Vector3(-.26f + index * .13f, 2.52f + index * .015f, .39f),
+                    new Vector3(.085f, .22f - index * .012f, .075f), Quaternion.Euler(20f, 0, -34f + index * 8f), material);
         }
 
         private static void AddHairCap(Transform root, Material material, Vector3 headScale)

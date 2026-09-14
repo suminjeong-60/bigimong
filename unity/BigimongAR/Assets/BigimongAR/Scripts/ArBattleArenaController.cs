@@ -111,8 +111,7 @@ namespace Bigimong.AR
         private void ApplyRingSize()
         {
             if (ringVisual == null) return;
-            var scale = ringVisual.transform.localScale;
-            ringVisual.transform.localScale = new Vector3(requestedRingDiameter, Mathf.Min(scale.y, 0.02f), requestedRingDiameter);
+            ringVisual.transform.localScale = new Vector3(requestedRingDiameter, 1f, requestedRingDiameter);
         }
 
         private void UpdateCandidate(Vector2 screenPosition)

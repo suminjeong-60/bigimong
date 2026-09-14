@@ -16,6 +16,7 @@ namespace Bigimong.Editor
     {
         private const string ScenePath = "Assets/BigimongAR/Scenes/ArBattle.unity";
         private const string RingPrefabPath = "Assets/BigimongAR/Prefabs/ArBattleRing.prefab";
+        private const string RingMaterialPath = "Assets/BigimongAR/Materials/ArBattleRingCyan.mat";
 
         [MenuItem("Bigimong/Create AR Battle Scene")]
         public static void CreateScene()
@@ -26,7 +27,7 @@ namespace Bigimong.Editor
 
             var sessionObject = new GameObject("AR Session", typeof(ARSession), typeof(ARInputManager));
             var originObject = new GameObject("XR Origin", typeof(XROrigin), typeof(ARRaycastManager), typeof(ARPlaneManager));
-            var cameraObject = new GameObject("AR Camera", typeof(Camera), typeof(AudioListener), typeof(ARCameraManager), typeof(ARCameraBackground));
+            var cameraObject = new GameObject("AR Camera", typeof(Camera), typeof(AudioListener), typeof(ARCameraManager), typeof(ARCameraBackground), typeof(ArCameraPoseDriver));
             cameraObject.tag = "MainCamera";
             cameraObject.transform.SetParent(originObject.transform, false);
             var camera = cameraObject.GetComponent<Camera>();
@@ -94,12 +95,40 @@ namespace Bigimong.Editor
 
         private static GameObject CreateRingPrefab()
         {
-            var source = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            Directory.CreateDirectory("Assets/BigimongAR/Materials");
+            var material = AssetDatabase.LoadAssetAtPath<Material>(RingMaterialPath);
+            if (material == null)
+            {
+                var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+                material = new Material(shader) { name = "Ar Battle Ring Cyan" };
+                AssetDatabase.CreateAsset(material, RingMaterialPath);
+            }
+            var cyan = new Color(.08f, .92f, .98f, .9f);
+            material.color = cyan;
+            if (material.HasProperty("_BaseColor")) material.SetColor("_BaseColor", cyan);
+            if (material.HasProperty("_EmissionColor"))
+            {
+                material.EnableKeyword("_EMISSION");
+                material.SetColor("_EmissionColor", cyan * .55f);
+            }
+            EditorUtility.SetDirty(material);
+
+            var source = new GameObject("ArBattleRing");
             source.name = "ArBattleRing";
-            source.transform.localScale = new Vector3(1f, 0.018f, 1f);
-            Object.DestroyImmediate(source.GetComponent<Collider>());
-            var renderer = source.GetComponent<Renderer>();
-            renderer.sharedMaterial.color = new Color(0.95f, 0.48f, 0.12f, 0.72f);
+            for (var index = 0; index < 40; index++)
+            {
+                var angle = index * Mathf.PI * 2f / 40f;
+                var segment = GameObject.CreatePrimitive(PrimitiveType.Cube);
+                segment.name = $"Ring Segment {index + 1:00}";
+                segment.transform.SetParent(source.transform, false);
+                segment.transform.localPosition = new Vector3(Mathf.Sin(angle) * .49f, .012f, Mathf.Cos(angle) * .49f);
+                segment.transform.localRotation = Quaternion.Euler(0, angle * Mathf.Rad2Deg, 0);
+                segment.transform.localScale = new Vector3(.105f, .024f, .035f);
+                Object.DestroyImmediate(segment.GetComponent<Collider>());
+                segment.GetComponent<Renderer>().sharedMaterial = material;
+            }
+            var center = new GameObject("Ring Center Cutout");
+            center.transform.SetParent(source.transform, false);
             var prefab = PrefabUtility.SaveAsPrefabAsset(source, RingPrefabPath);
             Object.DestroyImmediate(source);
             return prefab;
@@ -133,15 +162,26 @@ namespace Bigimong.Editor
             impactFlash.color = new Color(.25f, .08f, .05f, 0);
             impactFlash.raycastTarget = false;
 
-            var countdown = CreateText(safeArea, "Countdown", "10s", Vector2.zero, 60);
-            var playerAHp = CreateText(safeArea, "Player A HP", "A  HP 5", Vector2.zero, 34);
-            var playerBHp = CreateText(safeArea, "Player B HP", "B  HP 5", Vector2.zero, 34);
-            var roundStatus = CreateText(safeArea, "Round Status", "ROUND 1", Vector2.zero, 30);
+            var playerAPanel = CreateHudPanel(safeArea, "Player A Panel", new Vector2(-275, -120), new Vector2(430, 176));
+            var playerBPanel = CreateHudPanel(safeArea, "Player B Panel", new Vector2(275, -120), new Vector2(430, 176));
+            AnchorToTop(playerAPanel.GetComponent<RectTransform>());
+            AnchorToTop(playerBPanel.GetComponent<RectTransform>());
+            var playerAHp = CreateText(playerAPanel.transform, "Player A HP", "A  HP 5", new Vector2(0, 34), 31);
+            var playerBHp = CreateText(playerBPanel.transform, "Player B HP", "B  HP 5", new Vector2(0, 34), 31);
+            playerAHp.rectTransform.sizeDelta = new Vector2(380, 62);
+            playerBHp.rectTransform.sizeDelta = new Vector2(380, 62);
+            var playerAHpFill = CreateHpBar(playerAPanel.transform, "Player A HP Bar", new Vector2(0, -39), false);
+            var playerBHpFill = CreateHpBar(playerBPanel.transform, "Player B HP Bar", new Vector2(0, -39), true);
+
+            var countdownPanel = CreateHudPanel(safeArea, "Countdown Panel", new Vector2(0, -258), new Vector2(188, 108));
+            AnchorToTop(countdownPanel.GetComponent<RectTransform>());
+            var countdown = CreateText(countdownPanel.transform, "Countdown", "10s", Vector2.zero, 56);
+            countdown.rectTransform.sizeDelta = new Vector2(170, 92);
+            var roundPanel = CreateHudPanel(safeArea, "Round Panel", new Vector2(0, -370), new Vector2(620, 74));
+            AnchorToTop(roundPanel.GetComponent<RectTransform>());
+            var roundStatus = CreateText(roundPanel.transform, "Round Status", "ROUND 1", Vector2.zero, 29);
+            roundStatus.rectTransform.sizeDelta = new Vector2(580, 62);
             var badge = CreateText(safeArea, "Beta Badge", "OFFLINE AR BETA · 서버 정산 없음", Vector2.zero, 24);
-            AnchorToTop(countdown.rectTransform); countdown.rectTransform.anchoredPosition = new Vector2(0, -170);
-            AnchorToTop(playerAHp.rectTransform); playerAHp.rectTransform.anchoredPosition = new Vector2(-300, -65);
-            AnchorToTop(playerBHp.rectTransform); playerBHp.rectTransform.anchoredPosition = new Vector2(300, -65);
-            AnchorToTop(roundStatus.rectTransform); roundStatus.rectTransform.anchoredPosition = new Vector2(0, -255);
             AnchorToTop(badge.rectTransform); badge.rectTransform.anchoredPosition = new Vector2(0, -20);
             var left = CreateCircleButton(safeArea, "Left", "←", -210);
             var center = CreateCircleButton(safeArea, "Center", "↑", 0);
@@ -158,6 +198,8 @@ namespace Bigimong.Editor
             Assign(hud, "countdownText", countdown);
             Assign(hud, "playerAHpText", playerAHp);
             Assign(hud, "playerBHpText", playerBHp);
+            Assign(hud, "playerAHpFill", playerAHpFill);
+            Assign(hud, "playerBHpFill", playerBHpFill);
             Assign(hud, "roundStatusText", roundStatus);
             Assign(hud, "leftButton", left);
             Assign(hud, "centerButton", center);
@@ -191,17 +233,24 @@ namespace Bigimong.Editor
             safeArea.offsetMin = Vector2.zero;
             safeArea.offsetMax = Vector2.zero;
 
-            var previewPanel = CreatePanel(safeArea, "Avatar Preview", new Vector2(0, 365), new Vector2(880, 740),
-                new Color(0.08f, 0.10f, 0.14f, 0.34f));
+            var previewPanel = CreatePanel(safeArea, "Avatar Studio Backdrop", new Vector2(0, 365), new Vector2(880, 740),
+                new Color(.19f, .29f, .39f, .42f));
+            previewPanel.GetComponent<Image>().raycastTarget = false;
+            CreateHudFrame(previewPanel.transform, new Vector2(860, 720));
             var title = CreateText(safeArea, "Creator Title", "나만의 아바타", new Vector2(0, -50), 44);
             AnchorToTop(title.rectTransform);
             var previewName = CreateText(previewPanel.transform, "Preview Name", "플레이어", new Vector2(0, 300), 34);
 
             var previewAnchor = new GameObject("Avatar Preview Anchor").transform;
             previewAnchor.SetParent(cameraTransform, false);
-            previewAnchor.localPosition = new Vector3(0, -1.14f, 3.1f);
+            previewAnchor.localPosition = new Vector3(0, .08f, 3.1f);
             previewAnchor.localRotation = Quaternion.identity;
             previewAnchor.gameObject.SetActive(false);
+
+            var studioLighting = new GameObject("Avatar Studio Lighting");
+            studioLighting.transform.SetParent(previewAnchor, false);
+            CreateStudioLight(studioLighting.transform, "Studio Key Light", new Vector3(-1.5f, 2.7f, -1.2f), 1.15f);
+            CreateStudioLight(studioLighting.transform, "Studio Fill Light", new Vector3(1.4f, 1.9f, -1f), .58f);
 
             var scrollObject = new GameObject("Avatar Creator Scroll View", typeof(RectTransform), typeof(ScrollRect));
             scrollObject.transform.SetParent(safeArea, false);
@@ -384,17 +433,85 @@ namespace Bigimong.Editor
             var circle = new GameObject(name, typeof(RectTransform), typeof(CircularButtonGraphic), typeof(Button));
             circle.transform.SetParent(parent, false);
             var rect = circle.GetComponent<RectTransform>();
-            rect.sizeDelta = new Vector2(180, 180);
+            rect.sizeDelta = new Vector2(210, 210);
             AnchorToBottom(rect);
-            rect.anchoredPosition = new Vector2(offsetX, 65);
+            rect.anchoredPosition = new Vector2(offsetX, 76);
             var graphic = circle.GetComponent<CircularButtonGraphic>();
-            graphic.color = new Color(.74f, .38f, .10f, .95f);
+            graphic.color = new Color(.035f, .16f, .25f, .94f);
             var button = circle.GetComponent<Button>();
             button.targetGraphic = graphic;
             var symbol = CreateText(circle.transform, "Arrow", label, Vector2.zero, 76);
             symbol.rectTransform.sizeDelta = rect.sizeDelta;
             symbol.raycastTarget = false;
+            CreateHudFrame(circle.transform, new Vector2(196, 196));
             return button;
+        }
+
+        private static GameObject CreateHudPanel(Transform parent, string name, Vector2 position, Vector2 size)
+        {
+            var panel = CreatePanel(parent, name, position, size, new Color(.025f, .10f, .18f, .76f));
+            panel.GetComponent<Image>().raycastTarget = false;
+            CreateHudFrame(panel.transform, size - new Vector2(8, 8));
+            return panel;
+        }
+
+        private static Image CreateHpBar(Transform parent, string name, Vector2 position, bool rightToLeft)
+        {
+            var track = new GameObject(name, typeof(RectTransform), typeof(Image));
+            track.transform.SetParent(parent, false);
+            var rect = track.GetComponent<RectTransform>();
+            rect.sizeDelta = new Vector2(354, 31);
+            rect.anchoredPosition = position;
+            var trackImage = track.GetComponent<Image>();
+            trackImage.color = new Color(.015f, .045f, .07f, .92f);
+            trackImage.raycastTarget = false;
+
+            var fillObject = new GameObject("Fill", typeof(RectTransform), typeof(Image));
+            fillObject.transform.SetParent(track.transform, false);
+            var fillRect = fillObject.GetComponent<RectTransform>();
+            fillRect.anchorMin = new Vector2(.03f, .18f);
+            fillRect.anchorMax = new Vector2(.97f, .82f);
+            fillRect.offsetMin = fillRect.offsetMax = Vector2.zero;
+            var fill = fillObject.GetComponent<Image>();
+            fill.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+            fill.color = new Color(.24f, .91f, .31f, 1f);
+            fill.type = Image.Type.Filled;
+            fill.fillMethod = Image.FillMethod.Horizontal;
+            fill.fillOrigin = rightToLeft ? 1 : 0;
+            fill.fillAmount = 1f;
+            fill.raycastTarget = false;
+            return fill;
+        }
+
+        private static void CreateHudFrame(Transform parent, Vector2 size)
+        {
+            var cyan = new Color(.08f, .92f, .98f, .92f);
+            CreateDecorativeEdge(parent, "Cyan Border Top", new Vector2(0, size.y * .5f), new Vector2(size.x, 5), cyan);
+            CreateDecorativeEdge(parent, "Cyan Border Bottom", new Vector2(0, -size.y * .5f), new Vector2(size.x, 5), cyan);
+            CreateDecorativeEdge(parent, "Cyan Border Left", new Vector2(-size.x * .5f, 0), new Vector2(5, size.y), cyan);
+            CreateDecorativeEdge(parent, "Cyan Border Right", new Vector2(size.x * .5f, 0), new Vector2(5, size.y), cyan);
+        }
+
+        private static void CreateDecorativeEdge(Transform parent, string name, Vector2 position, Vector2 size, Color color)
+        {
+            var edge = new GameObject(name, typeof(RectTransform), typeof(Image));
+            edge.transform.SetParent(parent, false);
+            edge.GetComponent<RectTransform>().anchoredPosition = position;
+            edge.GetComponent<RectTransform>().sizeDelta = size;
+            edge.GetComponent<Image>().color = color;
+            edge.GetComponent<Image>().raycastTarget = false;
+        }
+
+        private static void CreateStudioLight(Transform parent, string name, Vector3 position, float intensity)
+        {
+            var lightObject = new GameObject(name, typeof(Light));
+            lightObject.transform.SetParent(parent, false);
+            lightObject.transform.localPosition = position;
+            lightObject.transform.localRotation = Quaternion.LookRotation(-position.normalized, Vector3.up);
+            var light = lightObject.GetComponent<Light>();
+            light.type = LightType.Directional;
+            light.intensity = intensity;
+            light.color = name.Contains("Key") ? new Color(1f, .88f, .78f) : new Color(.60f, .82f, 1f);
         }
 
         private static void AnchorToBottom(RectTransform rect)
@@ -490,6 +607,7 @@ namespace Bigimong.Editor
             text.fontSize = size;
             text.alignment = TextAnchor.MiddleCenter;
             text.color = Color.white;
+            text.raycastTarget = false;
             return text;
         }
 
