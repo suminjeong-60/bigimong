@@ -1,4 +1,5 @@
 using System.Collections;
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Bigimong.AR
@@ -24,16 +25,59 @@ namespace Bigimong.AR
         {
             transform.localScale = Vector3.zero;
             var duration = Mathf.Max(0.01f, seconds);
-            for (var elapsed = 0f; elapsed < duration; elapsed += Time.deltaTime)
+            for (var elapsed = 0f; elapsed < duration; elapsed += Time.unscaledDeltaTime)
             {
                 var progress = Mathf.SmoothStep(0f, 1f, elapsed / duration);
                 transform.localScale = expandedScale * progress;
                 SetEmission(1.4f + Mathf.Sin(progress * Mathf.PI * 3f) * 0.8f);
-                RotateRings(Time.deltaTime);
+                RotateRings(Time.unscaledDeltaTime);
                 yield return null;
             }
             transform.localScale = expandedScale;
             SetEmission(1.7f);
+        }
+
+        public IEnumerator ImpactBurst(float seconds)
+        {
+            transform.localScale = expandedScale;
+            var duration = Mathf.Clamp(seconds, .12f, .6f);
+            const int segmentCount = 24;
+            var segments = new List<GameObject>(segmentCount);
+            for (var index = 0; index < segmentCount; index++)
+            {
+                var angle = index * 360f / segmentCount;
+                var segment = Primitive(PrimitiveType.Cube, $"Shockwave Segment {index + 1:00}", transform);
+                segment.transform.localRotation = Quaternion.Euler(0, angle, 0);
+                segment.transform.localScale = new Vector3(.05f, .005f, .025f);
+                segments.Add(segment);
+            }
+
+            for (var elapsed = 0f; elapsed < duration; elapsed += Time.unscaledDeltaTime)
+            {
+                var progress = Mathf.Clamp01(elapsed / duration);
+                var eased = 1f - Mathf.Pow(1f - progress, 3f);
+                var radius = Mathf.Lerp(.08f, .64f, eased);
+                var thickness = Mathf.Lerp(.055f, .008f, progress);
+                for (var index = 0; index < segments.Count; index++)
+                {
+                    var radians = index * Mathf.PI * 2f / segments.Count;
+                    var segment = segments[index];
+                    if (segment == null) continue;
+                    segment.transform.localPosition = new Vector3(Mathf.Sin(radians) * radius, .012f,
+                        Mathf.Cos(radians) * radius);
+                    segment.transform.localScale = new Vector3(.055f + progress * .04f, .005f, thickness);
+                }
+                SetEmission(2.3f - progress * .8f);
+                RotateRings(Time.unscaledDeltaTime * 1.6f);
+                yield return null;
+            }
+
+            foreach (var segment in segments)
+            {
+                if (segment == null) continue;
+                if (Application.isPlaying) Destroy(segment);
+                else DestroyImmediate(segment);
+            }
         }
 
         private void Build()

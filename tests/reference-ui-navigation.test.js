@@ -18,3 +18,33 @@ test('the shipped Unity scene uses all five reference screens and real touch rou
   assert.match(importer, /TextureImporterNPOTScale\.None/);
   assert.match(importer, /Resources\/ReferenceUi\//);
 });
+
+test('every generated button has shared tactile press motion', () => {
+  const scene = read('Editor/BigimongArSceneBuilder.cs');
+  const navigation = read('Scripts/BigimongReferenceUi.cs');
+  const motion = read('Scripts/ButtonPressMotion.cs');
+
+  assert.match(scene, /AddComponent<ButtonPressMotion>/);
+  assert.match(navigation, /AddComponent<ButtonPressMotion>/);
+  assert.match(motion, /IPointerDownHandler/);
+  assert.match(motion, /IPointerUpHandler/);
+  assert.match(motion, /ISubmitHandler/);
+  assert.match(motion, /ICancelHandler/);
+  assert.doesNotMatch(motion, /IPointerCancelHandler/);
+  assert.match(motion, /Time\.unscaledDeltaTime/);
+  assert.match(motion, /transform\.localScale = Vector3\.one/);
+});
+
+test('avatar cursor repair and home idle layers never intercept navigation taps', () => {
+  const navigation = read('Scripts/BigimongReferenceUi.cs');
+  const idle = read('Scripts/ReferenceArtIdleMotion.cs');
+
+  assert.match(navigation, /CreateAvatarCursorRepair/);
+  assert.match(navigation, /Game: Avatar Cursor Repair/);
+  assert.match(navigation, /new Rect\(\.*/);
+  assert.match(navigation, /CreateHomeIdleOverlay/);
+  assert.match(navigation, /Game: Home Dinosaur Idle/);
+  assert.match(navigation, /raycastTarget = false/);
+  assert.match(idle, /Time\.unscaledTime/);
+  assert.match(idle, /basePosition/);
+});

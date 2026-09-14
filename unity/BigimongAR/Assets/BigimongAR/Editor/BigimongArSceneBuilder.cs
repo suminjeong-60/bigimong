@@ -190,6 +190,8 @@ namespace Bigimong.Editor
             var right = CreateCircleButton(safeArea, "Right", "→", 210);
             var restart = CreateButton(safeArea, "Restart", "다시 대전", Vector2.zero);
             AnchorToBottom(restart.GetComponent<RectTransform>()); restart.GetComponent<RectTransform>().anchoredPosition = new Vector2(0, 260);
+            var surrender = CreateButton(safeArea, "Surrender", "기권", Vector2.zero, new Vector2(210, 76), 27);
+            AnchorToTop(surrender.GetComponent<RectTransform>()); surrender.GetComponent<RectTransform>().anchoredPosition = new Vector2(390, -465);
             trackingPanel = CreateStatusPanel(safeArea, "TrackingLost", "바닥 인식이 끊겼어요 · 앵커를 다시 잡아주세요", new Vector2(0, 520));
             disconnectedPanel = CreateStatusPanel(safeArea, "Disconnected", "연결 복구 중 · 서버 자동플레이 진행", new Vector2(0, 410));
             trackingPanel.SetActive(false);
@@ -207,6 +209,7 @@ namespace Bigimong.Editor
             Assign(hud, "centerButton", center);
             Assign(hud, "rightButton", right);
             Assign(hud, "restartButton", restart);
+            Assign(hud, "surrenderButton", surrender);
             Assign(hud, "safeArea", safeArea);
             Assign(hud, "impactFlash", impactFlash);
             Assign(hud, "betaBadge", badge);
@@ -442,6 +445,7 @@ namespace Bigimong.Editor
             graphic.color = new Color(.035f, .16f, .25f, .94f);
             var button = circle.GetComponent<Button>();
             button.targetGraphic = graphic;
+            circle.AddComponent<ButtonPressMotion>();
             var symbol = CreateText(circle.transform, "Arrow", label, Vector2.zero, 76);
             symbol.rectTransform.sizeDelta = rect.sizeDelta;
             symbol.raycastTarget = false;
@@ -538,6 +542,7 @@ namespace Bigimong.Editor
             buttonObject.GetComponent<Image>().color = new Color(0.42f, 0.22f, 0.08f, 0.92f);
             var text = CreateText(buttonObject.transform, "Label", label, Vector2.zero, fontSize);
             text.rectTransform.sizeDelta = size;
+            buttonObject.AddComponent<ButtonPressMotion>();
             return buttonObject.GetComponent<Button>();
         }
 

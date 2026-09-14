@@ -45,7 +45,9 @@ namespace Bigimong.AR
             var petHomePosition = pet.transform.localPosition;
             var petHomeRotation = pet.transform.localRotation;
             pet.PrepareSummonRise();
-            avatar = ProceduralAvatarFactory.Create(profile);
+            var avatarAssetName = profile != null && profile.bodyType == "FEMININE" ? "Feminine" : "Masculine";
+            var avatarPrefab = Resources.Load<GameObject>("GeneratedCharacters/Avatar_" + avatarAssetName);
+            avatar = avatarPrefab != null ? Instantiate(avatarPrefab) : ProceduralAvatarFactory.Create(profile);
             avatar.transform.SetParent(arenaRoot, false);
             avatar.transform.localPosition = petHomePosition + new Vector3(0, 0, -0.72f);
             avatar.transform.localRotation = petHomeRotation;
@@ -64,12 +66,15 @@ namespace Bigimong.AR
             Destroy(throwTarget);
             throwTarget = null;
             magicCircle.gameObject.SetActive(true);
+            hud?.PlayImpactPulse(.28f);
+            yield return magicCircle.ImpactBurst(.34f);
+            if (generation != activeGeneration) yield break;
             yield return magicCircle.Expand(0.7f);
             if (generation != activeGeneration) yield break;
 
             lightColumn = CreateLightColumn(pet, petHomePosition);
             lightPulse = StartCoroutine(PulseLightColumn(1f));
-            yield return new WaitForSeconds(0.3f);
+            yield return new WaitForSecondsRealtime(0.3f);
             if (generation != activeGeneration) yield break;
             yield return pet.PlaySummonRise(1f);
             if (generation != activeGeneration) yield break;
@@ -124,7 +129,7 @@ namespace Bigimong.AR
 
         private IEnumerator PulseLightColumn(float seconds)
         {
-            for (var elapsed = 0f; elapsed < seconds; elapsed += Time.deltaTime)
+            for (var elapsed = 0f; elapsed < seconds; elapsed += Time.unscaledDeltaTime)
             {
                 var pulse = 0.65f + Mathf.Sin(elapsed / seconds * Mathf.PI) * 0.35f;
                 if (lightColumn != null) lightColumn.transform.localScale = new Vector3(0.34f * pulse, 0.75f, 0.34f * pulse);

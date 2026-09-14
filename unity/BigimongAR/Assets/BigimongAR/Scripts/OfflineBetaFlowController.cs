@@ -58,6 +58,7 @@ namespace Bigimong.AR
         public bool IsActive { get; private set; }
         public OfflineBetaPhase Phase { get; private set; }
         public int SelectedArtId => selectedArtId;
+        public event Action HomeRequested;
         public static OfflineBetaPhase FirstPhase(bool savedProfileExists) =>
             savedProfileExists ? OfflineBetaPhase.PetTestSelect : OfflineBetaPhase.AvatarCreate;
         public bool CanSubmitChoice => IsActive && Phase == OfflineBetaPhase.Battle &&
@@ -84,6 +85,7 @@ namespace Bigimong.AR
                 offlineDemo.BattleFinished += OnBattleFinished;
             }
             if (summonDirector != null) summonDirector.SummoningCompleted += OnSummoningCompleted;
+            if (hud != null) hud.SurrenderRequested += SurrenderToHome;
             previousPetButton?.onClick.AddListener(PreviousPet);
             nextPetButton?.onClick.AddListener(NextPet);
             choosePetButton?.onClick.AddListener(PreviewEncounter);
@@ -109,6 +111,7 @@ namespace Bigimong.AR
                 offlineDemo.BattleFinished -= OnBattleFinished;
             }
             if (summonDirector != null) summonDirector.SummoningCompleted -= OnSummoningCompleted;
+            if (hud != null) hud.SurrenderRequested -= SurrenderToHome;
             previousPetButton?.onClick.RemoveListener(PreviousPet);
             nextPetButton?.onClick.RemoveListener(NextPet);
             choosePetButton?.onClick.RemoveListener(PreviewEncounter);
@@ -143,6 +146,7 @@ namespace Bigimong.AR
             arena?.SetPlacementEnabled(true);
             hud?.SetInputLocked(false);
             hud?.SetOfflineBadgeVisible(false);
+            hud?.SetSurrenderVisible(false);
         }
 
         private void Update()
@@ -281,6 +285,20 @@ namespace Bigimong.AR
             SetPhase(OfflineBetaPhase.PetTestSelect);
         }
 
+        public void SurrenderToHome()
+        {
+            if (!IsActive || Phase != OfflineBetaPhase.ArScan && Phase != OfflineBetaPhase.SummonSequence &&
+                Phase != OfflineBetaPhase.Battle && Phase != OfflineBetaPhase.Result) return;
+            offlineDemo?.StopDemo();
+            director?.EndOfflineBattle();
+            summonDirector?.CancelAndReset();
+            arena?.SetPlacementEnabled(false);
+            arena?.RequestReanchor();
+            hud?.SetSurrenderVisible(false);
+            SetPhase(OfflineBetaPhase.PetTestSelect);
+            HomeRequested?.Invoke();
+        }
+
         private void SetPhase(OfflineBetaPhase value)
         {
             Phase = value;
@@ -291,6 +309,7 @@ namespace Bigimong.AR
             battleCanvas?.SetActive(value == OfflineBetaPhase.ArScan || value == OfflineBetaPhase.SummonSequence ||
                 value == OfflineBetaPhase.Battle || value == OfflineBetaPhase.Result);
             hud?.SetInputLocked(value != OfflineBetaPhase.Battle);
+            hud?.SetSurrenderVisible(value == OfflineBetaPhase.Battle);
             if (value == OfflineBetaPhase.PetTestSelect) SelectPet(selectedArtId);
             if (value == OfflineBetaPhase.TyrannosaurEncounter && encounterText != null)
                 encounterText.text = $"{selectedArtId:00} 비기몽 VS 티라노사우루스\n오프라인 체험전 · 보상 없음";

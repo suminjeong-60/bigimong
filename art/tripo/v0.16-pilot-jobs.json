@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "release": "0.16",
+  "provider": "fal-tripo",
+  "billableExecutionEnabled": false,
+  "defaults": {
+    "geometryQuality": "detailed",
+    "textureQuality": "detailed",
+    "textureAlignment": "original_image",
+    "orientation": "align_image",
+    "pbr": true,
+    "quad": true,
+    "autoSize": false,
+    "faceLimit": 30000
+  },
+  "jobs": [
+    {
+      "id": "avatar_male",
+      "endpoint": "tripo3d/h3.1/image-to-3d",
+      "sourceAsset": "unity/BigimongAR/Assets/BigimongAR/Resources/ReferenceUi/avatar.jpg",
+      "sourceGitBlobSha": "73c8bcab32521e4aaf1eba3ad13132b9e00ce97b",
+      "cropTopLeft": [150, 405, 365, 660],
+      "targetHeightM": 1.65,
+      "detailedAppearance": "Friendly stylized masculine avatar with a slightly oversized rounded head, very large warm-brown eyes and white catchlights, thick dark-brown brows, small rounded nose, rosy cheeks, closed gentle smile, five broad swept chocolate hair locks, compact childlike body, charcoal sleeveless top and shorts, simplified hands and bare feet. Soft clean toy-like PBR; no skin pores or photorealism.",
+      "outputStem": "avatar_male_v016",
+      "enabled": false
+    },
+    {
+      "id": "avatar_female",
+      "endpoint": "tripo3d/h3.1/image-to-3d",
+      "sourceAsset": "unity/BigimongAR/Assets/BigimongAR/Resources/ReferenceUi/avatar.jpg",
+      "sourceGitBlobSha": "73c8bcab32521e4aaf1eba3ad13132b9e00ce97b",
+      "cropTopLeft": [545, 405, 375, 660],
+      "targetHeightM": 1.62,
+      "detailedAppearance": "Friendly stylized feminine avatar in the same family and scale, oversized rounded head, very large warm-brown eyes with catchlights, slim dark brows, tiny rounded nose, rosy cheeks and a closed gentle smile, smooth chin-length chocolate-brown bob with side fringe and curled tips, charcoal sleeveless top and shorts, simplified hands and bare feet. Soft clean toy-like PBR and the exact supplied silhouette.",
+      "outputStem": "avatar_female_v016",
+      "enabled": false
+    },
+    {
+      "id": "tyrannosaurus_baby",
+      "endpoint": "tripo3d/h3.1/image-to-3d",
+      "sourceAsset": "android/app/src/main/res/drawable-nodpi/bigimong_01_growth.webp",
+      "sourceGitBlobSha": "2201ab23f47f27eb97d4cafc89be4c6171e4d7e1",
+      "targetHeightM": 0.3,
+      "detailedAppearance": "Toy-like red Tyrannosaurus baby with a cream muzzle and belly, huge warm-brown eyes, round snout, small forearms, short thick tail, four visible rounded white teeth and three-toed feet, wearing the exact yellow explorer cap from the reference. Curious happy expression, glossy soft PBR, no realistic scales, claws, scars or threatening anatomy.",
+      "outputStem": "tyrannosaurus_baby_v016",
+      "enabled": false
+    },
+    {
+      "id": "tyrannosaurus_teen",
+      "endpoint": "tripo3d/h3.1/image-to-3d",
+      "sourceAsset": "android/app/src/main/res/drawable-nodpi/bigimong_01_youth.webp",
+      "sourceGitBlobSha": "c1f9cd52edac9d01bab441137a19d81b259b73cb",
+      "targetHeightM": 0.9,
+      "detailedAppearance": "Cute red Tyrannosaurus teen with cream underside, large brown eyes, a slightly longer jaw, legs and tail than the baby but still broad and rounded, wearing the supplied dark cap, warm red explorer hoodie or vest and compact adventure pack. Confident friendly pose, clean toy-like PBR and no realistic violence or surface scales.",
+      "outputStem": "tyrannosaurus_teen_v016",
+      "enabled": false
+    },
+    {
+      "id": "tyrannosaurus_adult",
+      "endpoint": "tripo3d/h3.1/image-to-3d",
+      "sourceAsset": "android/app/src/main/res/drawable-nodpi/bigimong_01_adult.webp",
+      "sourceGitBlobSha": "4cf628cd0c44217f384be56b205f3eb502e58ac4",
+      "targetHeightM": 2.1,
+      "detailedAppearance": "Large adult red Tyrannosaurus with cream muzzle and underside, broad friendly head, powerful rounded chest and legs, big warm-brown eyes and readable white teeth, preserving the same cute family. It wears the exact yellow-orange expedition outerwear, yellow explorer cap and rolled-mat backpack from the reference; mobile-friendly toy-like PBR, no gore or photorealistic skin.",
+      "outputStem": "tyrannosaurus_adult_v016",
+      "enabled": false
+    }
+  ]
+}

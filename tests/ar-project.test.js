@@ -140,6 +140,17 @@ test("all catalog ids have procedural 3D stand-ins and motion fallback before fi
   assert.match(actor, /homeRotation = transform\.localRotation/);
 });
 
+test("accepted Blender exports replace fallbacks through stable Resources names", () => {
+  const director = read("Assets/BigimongAR/Scripts/ArBattleDirector.cs");
+  const summon = read("Assets/BigimongAR/Scripts/SummonSequenceDirector.cs");
+  assert.match(director, /Resources\.Load<GameObject>\(\$"GeneratedCharacters\/Bigimong_\{player\.artId:00\}_\{stageAssetName\}"\)/);
+  assert.match(director, /resourcePrefab != null.*Instantiate\(resourcePrefab/s);
+  assert.match(director, /ProceduralDragonFactory\.Create/);
+  assert.match(summon, /GeneratedCharacters\/Avatar_/);
+  assert.match(summon, /Resources\.Load<GameObject>/);
+  assert.match(summon, /ProceduralAvatarFactory\.Create/);
+});
+
 test("elemental combat catalog preserves the approved species, skill, and dodge mapping", () => {
   const source = read("Assets/BigimongAR/Scripts/ElementSkillCatalog.cs");
   const rows = [...source.matchAll(/Profile\((\d+), Element\.(Water|Fire|Earth|Wind), "([^"]+)", "([^"]+)", "([^"]+)"/g)];
@@ -293,6 +304,46 @@ test("gold medallion summoning stays ordered, cancellable, and battle-gated", ()
   assert.match(checks, /VerifySummonerPlacementUsesPetHome/);
   assert.match(build, /SummonSequenceEditorChecks\.RunBehaviorChecks\(\)/);
   assert.match(build, /SummonSequenceEditorChecks\.RunSceneChecks\(\)/);
+});
+
+test("offline AR surrender performs full cleanup and returns the reference UI home", () => {
+  const flow = read("Assets/BigimongAR/Scripts/OfflineBetaFlowController.cs");
+  const hud = read("Assets/BigimongAR/Scripts/ArBattleHud.cs");
+  const navigation = read("Assets/BigimongAR/Scripts/BigimongReferenceUi.cs");
+  const builder = read("Assets/BigimongAR/Editor/BigimongArSceneBuilder.cs");
+  const checks = read("Assets/BigimongAR/Editor/OfflineBetaEditorTests.cs");
+
+  assert.match(hud, /public event Action SurrenderRequested/);
+  assert.match(hud, /surrenderButton.*onClick.*SurrenderRequested/s);
+  assert.match(builder, /"Surrender", "기권"/);
+  assert.match(builder, /Assign\(hud, "surrenderButton", surrender\)/);
+  assert.match(flow, /hud\.SurrenderRequested \+= SurrenderToHome/);
+  assert.match(flow, /public event Action HomeRequested/);
+  assert.match(flow, /public void SurrenderToHome\(\)/);
+
+  const surrender = flow.slice(flow.indexOf("public void SurrenderToHome()"));
+  const stop = surrender.indexOf("offlineDemo?.StopDemo()");
+  const end = surrender.indexOf("director?.EndOfflineBattle()");
+  const cancel = surrender.indexOf("summonDirector?.CancelAndReset()");
+  const disable = surrender.indexOf("arena?.SetPlacementEnabled(false)");
+  const reanchor = surrender.indexOf("arena?.RequestReanchor()");
+  const home = surrender.indexOf("HomeRequested?.Invoke()");
+  assert.ok(stop >= 0 && stop < end && end < cancel && cancel < disable && disable < reanchor && reanchor < home);
+  assert.match(navigation, /flow\.HomeRequested \+= OnHomeRequested/);
+  assert.match(navigation, /private void OnHomeRequested\(\).*ShowHome\(\)/s);
+  assert.match(checks, /surrenderButton/);
+});
+
+test("medallion impact triggers a bounded shockwave before the rune circle expands", () => {
+  const sequence = read("Assets/BigimongAR/Scripts/SummonSequenceDirector.cs");
+  const circle = read("Assets/BigimongAR/Scripts/ProceduralMagicCircle.cs");
+  const throwAt = sequence.indexOf("yield return summoner.ThrowMedallion");
+  const impactAt = sequence.indexOf("yield return magicCircle.ImpactBurst");
+  const expandAt = sequence.indexOf("yield return magicCircle.Expand");
+  assert.ok(throwAt >= 0 && throwAt < impactAt && impactAt < expandAt);
+  assert.match(circle, /Shockwave Segment/);
+  assert.match(circle, /Mathf\.Clamp\(seconds, \.12f, \.6f\)/);
+  assert.match(circle, /Time\.unscaledDeltaTime/);
 });
 
 test("AR countdown uses server clock calibration and monotonic elapsed time", () => {

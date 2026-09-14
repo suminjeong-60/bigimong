@@ -33,6 +33,11 @@ namespace Bigimong.AR.EditorChecks
             var hud = Field<ArBattleHud>(flow, "hud");
             var safe = Field<RectTransform>(hud, "safeArea");
             Require(safe != null, "HUD safe area missing");
+            var surrenderButton = Field<Button>(hud, "surrenderButton");
+            Require(surrenderButton != null && surrenderButton.GetComponent<ButtonPressMotion>() != null,
+                "surrenderButton and tactile motion missing");
+            Require(surrenderButton.transform.Find("Label")?.GetComponent<Text>()?.text == "기권",
+                "surrenderButton label wrong");
             foreach (var (name, label) in new[] { ("Left", "←"), ("Center", "↑"), ("Right", "→") })
             {
                 var button = safe.Find(name)?.GetComponent<Button>();

@@ -18,6 +18,7 @@ namespace Bigimong.AR
         [SerializeField] private Button centerButton;
         [SerializeField] private Button rightButton;
         [SerializeField] private Button restartButton;
+        [SerializeField] private Button surrenderButton;
         [SerializeField] private RectTransform safeArea;
         [SerializeField] private Image impactFlash;
         [SerializeField] private Text betaBadge;
@@ -26,9 +27,10 @@ namespace Bigimong.AR
         private bool submitted;
         private bool inputLocked;
         private Rect lastSafeArea;
-        private Coroutine pressAnimation;
         private Coroutine impactAnimation;
         private bool offlineBadgeVisible;
+
+        public event Action SurrenderRequested;
 
         private void Awake()
         {
@@ -36,8 +38,20 @@ namespace Bigimong.AR
             centerButton?.onClick.AddListener(() => Choose("CENTER"));
             rightButton?.onClick.AddListener(() => Choose("RIGHT"));
             restartButton?.onClick.AddListener(() => bridge?.RestartOfflineDemo());
+            surrenderButton?.onClick.AddListener(OnSurrenderClicked);
             if (restartButton != null) restartButton.gameObject.SetActive(false);
+            if (surrenderButton != null) surrenderButton.gameObject.SetActive(false);
             ApplySafeArea();
+        }
+
+        private void OnDestroy()
+        {
+            surrenderButton?.onClick.RemoveListener(OnSurrenderClicked);
+        }
+
+        private void OnSurrenderClicked()
+        {
+            if (offlineBadgeVisible) SurrenderRequested?.Invoke();
         }
 
         private void Update()
@@ -73,6 +87,14 @@ namespace Bigimong.AR
             offlineBadgeVisible = visible;
             if (betaBadge != null) betaBadge.gameObject.SetActive(visible);
             if (!visible && restartButton != null) restartButton.gameObject.SetActive(false);
+            if (!visible && surrenderButton != null) surrenderButton.gameObject.SetActive(false);
+        }
+
+        public void SetSurrenderVisible(bool visible)
+        {
+            if (surrenderButton == null) return;
+            surrenderButton.gameObject.SetActive(visible && offlineBadgeVisible);
+            surrenderButton.interactable = visible && offlineBadgeVisible;
         }
 
         public void PlayImpactPulse(float intensity)
@@ -135,33 +157,7 @@ namespace Bigimong.AR
         {
             if (submitted || inputLocked) return;
             submitted = true;
-            var button = direction == "LEFT" ? leftButton : direction == "RIGHT" ? rightButton : centerButton;
-            if (button != null)
-            {
-                if (pressAnimation != null) StopCoroutine(pressAnimation);
-                pressAnimation = StartCoroutine(PressFeedback(button.transform as RectTransform));
-            }
             bridge?.SubmitChoice(direction);
-        }
-
-        private IEnumerator PressFeedback(RectTransform target)
-        {
-            if (target == null) yield break;
-            yield return Scale(target, 1f, .92f, .06f);
-            yield return Scale(target, .92f, 1.05f, .08f);
-            yield return Scale(target, 1.05f, 1f, .06f);
-            target.localScale = Vector3.one;
-            pressAnimation = null;
-        }
-
-        private static IEnumerator Scale(RectTransform target, float from, float to, float seconds)
-        {
-            for (var elapsed = 0f; elapsed < seconds; elapsed += Time.unscaledDeltaTime)
-            {
-                target.localScale = Vector3.one * Mathf.Lerp(from, to, Mathf.Clamp01(elapsed / seconds));
-                yield return null;
-            }
-            target.localScale = Vector3.one * to;
         }
 
         private void OnDisable()
@@ -169,6 +165,7 @@ namespace Bigimong.AR
             if (leftButton != null) leftButton.transform.localScale = Vector3.one;
             if (centerButton != null) centerButton.transform.localScale = Vector3.one;
             if (rightButton != null) rightButton.transform.localScale = Vector3.one;
+            if (surrenderButton != null) surrenderButton.transform.localScale = Vector3.one;
             if (impactFlash != null) impactFlash.color = new Color(.25f, .08f, .05f, 0);
         }
 

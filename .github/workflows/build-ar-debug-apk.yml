@@ -95,20 +95,20 @@ jobs:
         shell: bash
         run: |
           node scripts/verify-apk.mjs \
-            --apk build/Android/Bigimong-AR-v0.15-debug.apk \
-            --report build/Android/Bigimong-AR-v0.15-verification.json
-          sha256sum build/Android/Bigimong-AR-v0.15-debug.apk \
-            > build/Android/Bigimong-AR-v0.15-debug.apk.sha256
+            --apk build/Android/Bigimong-AR-v0.16-debug.apk \
+            --report build/Android/Bigimong-AR-v0.16-verification.json
+          sha256sum build/Android/Bigimong-AR-v0.16-debug.apk \
+            > build/Android/Bigimong-AR-v0.16-debug.apk.sha256
 
       - name: Upload installable APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: Bigimong-AR-v0.15-debug
+          name: Bigimong-AR-v0.16-debug
           path: |
-            build/Android/Bigimong-AR-v0.15-debug.apk
-            build/Android/Bigimong-AR-v0.15-verification.json
-            build/Android/Bigimong-AR-v0.15-debug.apk.sha256
+            build/Android/Bigimong-AR-v0.16-debug.apk
+            build/Android/Bigimong-AR-v0.16-verification.json
+            build/Android/Bigimong-AR-v0.16-debug.apk.sha256
           if-no-files-found: error
           retention-days: 14
 
@@ -137,7 +137,7 @@ jobs:
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: Bigimong-AR-v0.15-build-logs
+          name: Bigimong-AR-v0.16-build-logs
           path: build/diagnostics
           if-no-files-found: error
           retention-days: 14

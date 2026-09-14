@@ -97,6 +97,22 @@ namespace Bigimong.AR
             canvas.enabled = false;
         }
 
+        private void OnEnable()
+        {
+            if (flow != null) flow.HomeRequested += OnHomeRequested;
+        }
+
+        private void OnDisable()
+        {
+            if (flow != null) flow.HomeRequested -= OnHomeRequested;
+        }
+
+        private void OnHomeRequested()
+        {
+            if (progress == null) progress = OfflineReferenceProgressStore.Load();
+            ShowHome();
+        }
+
         private void Update()
         {
             if (flow == null || !flow.IsActive)
@@ -178,6 +194,8 @@ namespace Bigimong.AR
                     Destroy(child);
                 }
             }
+            if (target == "avatar") CreateAvatarCursorRepair(texture);
+            if (target == "home") CreateHomeIdleOverlay(texture);
             if (target == "loading" || target == "battle-loading") return;
             Nav("뒤로가기", 10, 10, 120, 120);
             Nav("설정", 897, 7, 120, 120);
@@ -225,6 +243,7 @@ namespace Bigimong.AR
             graphic.color = new Color(1, 1, 1, .001f);
             var button = obj.GetComponent<Button>();
             button.targetGraphic = graphic;
+            obj.AddComponent<ButtonPressMotion>();
             button.onClick.AddListener(() => Activate(action));
         }
 
@@ -506,6 +525,37 @@ namespace Bigimong.AR
         {
             Layout(marker, girl ? 595 : 194, 1060, girl ? 290 : 280, 156);
             marker.gameObject.SetActive(true);
+            marker.SetAsLastSibling();
+        }
+
+        private void CreateAvatarCursorRepair(Texture2D texture)
+        {
+            // Mirror the clean left edge of the blue button over the baked white mouse cursor.
+            var source = new Rect(151f, 1060f, 120f, 170f);
+            var target = new Rect(399f, 1060f, 120f, 170f);
+            CreateReferenceCrop("Game: Avatar Cursor Repair", texture, target, source, true);
+        }
+
+        private void CreateHomeIdleOverlay(Texture2D texture)
+        {
+            var dinosaur = new Rect(350f, 620f, 365f, 435f);
+            var overlay = CreateReferenceCrop("Game: Home Dinosaur Idle", texture, dinosaur, dinosaur, false);
+            overlay.AddComponent<ReferenceArtIdleMotion>().Configure(new Vector2(1.2f, 3.2f), .0045f, 1.08f, .4f);
+        }
+
+        private GameObject CreateReferenceCrop(string name, Texture2D texture, Rect target, Rect source, bool mirrorX)
+        {
+            var obj = new GameObject(name, typeof(RectTransform), typeof(RawImage));
+            obj.transform.SetParent(board, false);
+            Layout(obj.GetComponent<RectTransform>(), target.x, target.y, target.width, target.height);
+            var image = obj.GetComponent<RawImage>();
+            image.texture = texture;
+            var u = mirrorX ? (source.x + source.width) / texture.width : source.x / texture.width;
+            var width = (mirrorX ? -source.width : source.width) / texture.width;
+            image.uvRect = new Rect(u, 1f - (source.y + source.height) / texture.height,
+                width, source.height / texture.height);
+            image.raycastTarget = false;
+            return obj;
         }
 
         private void CreateNotice()
@@ -569,6 +619,7 @@ namespace Bigimong.AR
         {
             var button = Block("Game: Button " + action, parent, x, y, w, h, color, baseW, baseH);
             button.AddComponent<Button>().onClick.AddListener(() => Activate(action));
+            button.AddComponent<ButtonPressMotion>();
             Label("Game: Button Label", button.transform, caption, 0, 0, w, h, 37,
                 Cocoa, w, h);
             return button;

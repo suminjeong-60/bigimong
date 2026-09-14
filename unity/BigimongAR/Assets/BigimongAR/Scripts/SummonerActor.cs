@@ -48,11 +48,12 @@ namespace Bigimong.AR
                 var start = medallion.position;
                 const float duration = 0.3f;
                 const float arcHeight = 0.35f;
-                for (var elapsed = 0f; elapsed < duration; elapsed += Time.deltaTime)
+                for (var elapsed = 0f; elapsed < duration; elapsed += Time.unscaledDeltaTime)
                 {
                     var t = Mathf.Clamp01(elapsed / duration);
-                    medallion.position = Vector3.Lerp(start, target.position, t) + Vector3.up * Mathf.Sin(t * Mathf.PI) * arcHeight;
-                    medallion.Rotate(Vector3.up, Time.deltaTime * 900f, Space.World);
+                    var travel = Mathf.SmoothStep(0f, 1f, t);
+                    medallion.position = Vector3.Lerp(start, target.position, travel) + Vector3.up * Mathf.Sin(t * Mathf.PI) * arcHeight;
+                    medallion.Rotate(new Vector3(1f, 1f, .35f).normalized, Time.unscaledDeltaTime * 960f, Space.World);
                     yield return null;
                 }
                 medallion.position = target.position + Vector3.up * 0.01f;
@@ -65,9 +66,9 @@ namespace Bigimong.AR
         {
             var start = transform.localPosition;
             var target = start + Vector3.back * 0.32f;
-            for (var elapsed = 0f; elapsed < seconds; elapsed += Time.deltaTime)
+            for (var elapsed = 0f; elapsed < seconds; elapsed += Time.unscaledDeltaTime)
             {
-                transform.localPosition = Vector3.Lerp(start, target, Mathf.Clamp01(elapsed / seconds));
+                transform.localPosition = Vector3.Lerp(start, target, Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(elapsed / seconds)));
                 yield return null;
             }
             transform.localPosition = target;
@@ -89,7 +90,7 @@ namespace Bigimong.AR
         {
             var upperStart = rightUpperArm != null ? rightUpperArm.localRotation : Quaternion.identity;
             var lowerStart = rightLowerArm != null ? rightLowerArm.localRotation : Quaternion.identity;
-            for (var elapsed = 0f; elapsed < seconds; elapsed += Time.deltaTime)
+            for (var elapsed = 0f; elapsed < seconds; elapsed += Time.unscaledDeltaTime)
             {
                 var t = Mathf.SmoothStep(0, 1, elapsed / seconds);
                 if (rightUpperArm != null) rightUpperArm.localRotation = Quaternion.Slerp(upperStart, upperHome * Quaternion.Euler(upperEuler), t);

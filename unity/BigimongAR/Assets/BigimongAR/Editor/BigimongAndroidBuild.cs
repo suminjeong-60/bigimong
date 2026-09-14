@@ -11,10 +11,10 @@ namespace Bigimong.Editor
     public static class BigimongAndroidBuild
     {
         private const string ApplicationId = "com.bigimong.app";
-        private const string BundleVersion = "0.15.0";
-        private const int VersionCode = 15;
+        private const string BundleVersion = "0.16.0";
+        private const int VersionCode = 16;
         private const string ScenePath = "Assets/BigimongAR/Scenes/ArBattle.unity";
-        private const string ApkName = "Bigimong-AR-v0.15-debug.apk";
+        private const string ApkName = "Bigimong-AR-v0.16-debug.apk";
 
         public static void BuildDebugApk()
         {

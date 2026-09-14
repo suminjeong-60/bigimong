@@ -256,9 +256,16 @@ namespace Bigimong.AR
         private ArBattleActor Spawn(string side, BattlePlayerMessage player, Vector3 localPosition)
         {
             var prefab = characterCatalog != null ? characterCatalog.Resolve(player.artId, player.stage) : null;
-            var instance = prefab != null
-                ? Instantiate(prefab, arenaRoot)
-                : ProceduralDragonFactory.Create(player.artId, player.stage);
+            GameObject instance;
+            if (prefab != null) instance = Instantiate(prefab, arenaRoot);
+            else
+            {
+                var stageAssetName = player.stage == "ADULT" ? "Adult" : player.stage == "YOUTH" ? "Teen" : "Baby";
+                var resourcePrefab = Resources.Load<GameObject>($"GeneratedCharacters/Bigimong_{player.artId:00}_{stageAssetName}");
+                instance = resourcePrefab != null
+                    ? Instantiate(resourcePrefab, arenaRoot)
+                    : ProceduralDragonFactory.Create(player.artId, player.stage);
+            }
             instance.transform.SetParent(arenaRoot, false);
             instance.name = $"Bigimong_{side}_{player.artId:00}_{player.stage}";
             instance.transform.localPosition = localPosition;
