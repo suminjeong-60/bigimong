@@ -6,6 +6,7 @@ test('the shipped Unity scene uses all five reference screens and real touch rou
   const scene = read('Editor/BigimongArSceneBuilder.cs');
   const build = read('Editor/BigimongAndroidBuild.cs');
   const navigation = read('Scripts/BigimongReferenceUi.cs');
+  const importer = read('Editor/BigimongReferenceUiArtImporter.cs');
   assert.match(scene, /BigimongReferenceUi/);
   assert.match(build, /BigimongReferenceUiEditorChecks\.RunSceneChecks/);
   for (const asset of ['loading', 'battle-loading', 'avatar', 'egg', 'home'])
@@ -14,4 +15,6 @@ test('the shipped Unity scene uses all five reference screens and real touch rou
     assert.ok(navigation.includes(action), `missing ${action}`);
   assert.match(navigation, /Resources\.Load<Texture2D>/);
   assert.match(navigation, /button\.onClick\.AddListener/);
+  assert.match(importer, /TextureImporterNPOTScale\.None/);
+  assert.match(importer, /Resources\/ReferenceUi\//);
 });
