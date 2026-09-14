@@ -14,10 +14,10 @@ test("Unity build entry point creates the approved ARM64 debug APK", () => {
   assert.match(source, /ScriptingImplementation\.IL2CPP/);
   assert.match(source, /AndroidSdkVersions\.AndroidApiLevel28/);
   assert.match(source, /BuildOptions\.Development/);
-  assert.match(source, /private const string BundleVersion = "0\.14\.0"/);
+  assert.match(source, /private const string BundleVersion = "0\.15\.0"/);
   assert.match(source, /private const int VersionCode = 15/);
   assert.match(read("scripts/verify-apk.mjs"), /versionCode: "15"/);
-  assert.match(source, /Bigimong-AR-v0\.14-debug\.apk/);
+  assert.match(source, /Bigimong-AR-v0\.15-debug\.apk/);
 });
 
 test("GitHub Actions verifies source, builds Unity, and uploads the APK", () => {
@@ -30,14 +30,14 @@ test("GitHub Actions verifies source, builds Unity, and uploads the APK", () => 
   assert.match(workflow, /actions\/upload-artifact@v4/);
   assert.match(workflow, /unityVersion: 6000\.0\.58f2/);
   assert.match(workflow, /node scripts\/verify-apk\.mjs/);
-  assert.match(workflow, /--apk build\/Android\/Bigimong-AR-v0\.14-debug\.apk/);
-  assert.match(workflow, /--report build\/Android\/Bigimong-AR-v0\.14-verification\.json/);
-  assert.match(workflow, /sha256sum build\/Android\/Bigimong-AR-v0\.14-debug\.apk/);
-  assert.match(workflow, /name: Bigimong-AR-v0\.14-debug/);
-  assert.match(workflow, /Bigimong-AR-v0\.14-verification\.json/);
-  assert.match(workflow, /Bigimong-AR-v0\.14-debug\.apk\.sha256/);
+  assert.match(workflow, /--apk build\/Android\/Bigimong-AR-v0\.15-debug\.apk/);
+  assert.match(workflow, /--report build\/Android\/Bigimong-AR-v0\.15-verification\.json/);
+  assert.match(workflow, /sha256sum build\/Android\/Bigimong-AR-v0\.15-debug\.apk/);
+  assert.match(workflow, /name: Bigimong-AR-v0\.15-debug/);
+  assert.match(workflow, /Bigimong-AR-v0\.15-verification\.json/);
+  assert.match(workflow, /Bigimong-AR-v0\.15-debug\.apk\.sha256/);
   assert.match(workflow, /if: failure\(\)/);
-  assert.match(workflow, /name: Bigimong-AR-v0\.14-build-logs/);
+  assert.match(workflow, /name: Bigimong-AR-v0\.15-build-logs/);
   assert.match(workflow, /retention-days: 14/);
   assert.match(workflow, /permissions:\s+contents: read/s);
   assert.match(workflow, /secrets\.UNITY_LICENSE/);
@@ -78,9 +78,9 @@ test("generated Android and Unity build state is excluded from source control", 
 test("v0.12 documentation distinguishes source readiness from a built APK", () => {
   const readme = read("README.md");
   const implementation = read("docs/AR_IMPLEMENTATION_v0.12.md");
-  assert.match(readme, /# 비기몽 제작 기반 v0\.14/);
-  assert.match(readme, /Bigimong-AR-v0\.14-verification\.json/);
-  assert.match(readme, /Bigimong-AR-v0\.14-debug\.apk\.sha256/);
+  assert.match(readme, /# 비기몽 제작 기반 v0\.15/);
+  assert.match(readme, /Bigimong-AR-v0\.15-verification\.json/);
+  assert.match(readme, /Bigimong-AR-v0\.15-debug\.apk\.sha256/);
   assert.match(implementation, /APK 빌드 소스 준비 완료/);
   assert.match(implementation, /Unity C# 컴파일과 실제 APK 생성은 GitHub Actions 실행 전까지 미검증/);
 });
