@@ -20,6 +20,10 @@ namespace Bigimong.AR.EditorChecks
                     throw new InvalidOperationException($"Reference art has wrong size: {path} ({art.width}x{art.height})");
             }
 
+            foreach (var sheet in new[] { "gallery", "evolution-01" })
+                if (Resources.Load<Texture2D>("ReferenceUi/" + sheet) == null)
+                    throw new InvalidOperationException("Offline codex artwork is missing: " + sheet);
+
             var view = UnityEngine.Object.FindObjectOfType<BigimongReferenceUi>();
             if (view == null) throw new InvalidOperationException("Reference screen controller is missing from the scene");
             var field = typeof(BigimongReferenceUi).GetField("flow", BindingFlags.NonPublic | BindingFlags.Instance);

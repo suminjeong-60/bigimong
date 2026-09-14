@@ -1,4 +1,4 @@
-# 비기몽 제작 기반 v0.14
+# 비기몽 제작 기반 v0.15
 
 이전 AR 설계와 검증 범위: [참고 디자인·AR 구성](docs/AR_IMPLEMENTATION_v0.13.md).
 
@@ -63,6 +63,14 @@
 - 부화 전 대전 참가 차단
 - v0.4 기존 사용자 데이터 자동 이전
 
+## 원본 화면으로 플레이하는 독립 APK
+
+Unity APK v0.15는 사용자가 제공한 로딩·대전 로딩·아바타 선택·알·부화 후 홈 이미지 5장을 그대로 사용합니다. 이미지에 인쇄된 코인과 경험치 숫자는 고정값이므로 실제 진행 상태는 화면 위의 갈색 게임 패널에 따로 표시합니다.
+
+아바타 선택 → 알 닦기 또는 놀아주기로 30,000 경험치 → 부화 → 홈으로 이어지며, 알·레벨·코인·간식·하루 선물·퀘스트가 기기 안에 저장됩니다. 상점·놀아주기·도감·퀘스트·선물·설정 버튼은 각각 게임 화면을 엽니다. 도감에는 기존 30종 컬렉션 이미지가, 캐릭터 페이지에는 01번 3단계 진화 이미지가 나타납니다. AR은 혼자 플레이하는 연습 대전이며 실제 다른 사람과의 1:1 대전이나 서버 정산이 아닙니다. 오프라인 비기코인은 서버 재화와 분리됩니다.
+
+본 APK에는 90종의 완성형 리깅 3D 모델과 온라인 동기화가 아직 없습니다. 이미지와 동일한 3D 동작·외형으로 만들려면 각 성장 단계의 모델·애니메이션 에셋이 필요합니다. 이 빌드는 기존 Kotlin 앱의 Health Connect 걸음 및 온라인 대전 서버와 연결되어 있지 않습니다.
+
 ## 실행
 
 Node.js 18 이상이 필요합니다.
@@ -95,16 +103,16 @@ Android 앱은 Android Studio에서 `android` 폴더를 엽니다. 에뮬레이�
 
 1. GitHub 저장소의 `Settings > Secrets and variables > Actions`에 `UNITY_LICENSE`, `UNITY_EMAIL`, `UNITY_PASSWORD`를 등록합니다.
 2. `Actions > Build Bigimong AR debug APK > Run workflow`를 실행합니다.
-3. 성공한 실행의 `Artifacts`에서 `Bigimong-AR-v0.14-debug`를 내려받습니다.
-4. 압축을 풀어 `Bigimong-AR-v0.14-debug.apk`를 ARCore 지원 Android 기기에 설치합니다.
+3. 성공한 실행의 `Artifacts`에서 `Bigimong-AR-v0.15-debug`를 내려받습니다.
+4. 압축을 풀어 `Bigimong-AR-v0.15-debug.apk`를 ARCore 지원 Android 기기에 설치합니다.
 
 성공 artifact에는 다음 세 파일이 있어야 합니다.
 
-- `Bigimong-AR-v0.14-debug.apk`
-- `Bigimong-AR-v0.14-verification.json`
-- `Bigimong-AR-v0.14-debug.apk.sha256`
+- `Bigimong-AR-v0.15-debug.apk`
+- `Bigimong-AR-v0.15-verification.json`
+- `Bigimong-AR-v0.15-debug.apk.sha256`
 
-JSON의 `valid`가 `true`인지 확인하고, 내려받은 APK의 SHA-256이 `.sha256` 파일 및 JSON의 `sha256` 값과 같은지 확인합니다. 실제 GitHub Actions 성공과 실기기 실행 전에는 이 저장소 상태를 “APK 빌드 소스 준비 완료”로만 판단합니다.
+JSON의 `valid`가 `true`인지 확인하고, 내려받은 APK의 SHA-256이 `.sha256` 파일 및 JSON의 `sha256` 값과 같은지 확인합니다. GitHub Actions의 빌드 및 APK 검증이 통과한 뒤에도 실제 Android 기기에서의 화면 비율·조작·AR 바닥 인식은 별도로 확인해야 합니다.
 
 Unity 계정 비밀번호와 라이선스 본문은 저장소 파일, 이슈, 로그에 입력하지 않습니다. GitHub Actions Secrets에만 등록합니다.
 

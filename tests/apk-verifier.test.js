@@ -7,8 +7,8 @@ import { inspectWithApkAnalyzer, validateMetadata, verifyApk } from "../scripts/
 
 const validMetadata = {
   applicationId: "com.bigimong.app",
-  versionName: "0.14.0",
-  versionCode: "14",
+  versionName: "0.15.0",
+  versionCode: "15",
   minSdk: "28",
   targetSdk: "36",
   permissions: ["android.permission.CAMERA"],
@@ -33,15 +33,15 @@ test("APK analyzer root-absolute paths still reject forbidden ABIs", () => {
 
 function withTempApk(run) {
   const directory = mkdtempSync(join(tmpdir(), "bigimong-apk-"));
-  const apkPath = join(directory, "Bigimong-AR-v0.14-debug.apk");
-  const reportPath = join(directory, "Bigimong-AR-v0.14-verification.json");
+  const apkPath = join(directory, "Bigimong-AR-v0.15-debug.apk");
+  const reportPath = join(directory, "Bigimong-AR-v0.15-verification.json");
   writeFileSync(apkPath, "deterministic fake apk bytes");
   return Promise.resolve(run({ apkPath, reportPath })).finally(() => {
     rmSync(directory, { recursive: true, force: true });
   });
 }
 
-test("verifyApk writes a passing v0.14 report with SHA-256", async () => {
+test("verifyApk writes a passing v0.15 report with SHA-256", async () => {
   await withTempApk(async ({ apkPath, reportPath }) => {
     const report = await verifyApk({
       apkPath,

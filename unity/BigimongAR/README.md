@@ -33,8 +33,8 @@ Unity 6.0과 AR Foundation 6.1.1을 사용하는 Android 전용 AR 전투 모듈
 
 ## GitHub Actions AR 테스트 APK
 
-저장소의 `Build Bigimong AR debug APK` 워크플로를 수동 실행하면 `Bigimong.Editor.BigimongAndroidBuild.BuildDebugApk`가 AR 장면을 생성하고 `com.bigimong.app` ARM64 개발 APK를 빌드한다. 결과물은 `Bigimong-AR-v0.11-debug` artifact에서 내려받는다.
+저장소의 `Build Bigimong AR debug APK` 워크플로를 수동 실행하면 `Bigimong.Editor.BigimongAndroidBuild.BuildDebugApk`가 AR 장면을 생성하고 `com.bigimong.app` ARM64 개발 APK를 빌드한다. 결과물은 `Bigimong-AR-v0.15-debug` artifact에서 내려받는다.
 
-이 APK는 ARCore 실기기 검증을 위한 독립 실행형 Unity 테스트 빌드다. 제품 구조인 Kotlin·Compose 앱의 `Unity as a Library` 연결 코드는 그대로 유지되며, 테스트가 끝난 뒤 같은 Unity 장면을 `unityLibrary`로 내보내 결합한다.
+이 APK는 사용자가 제공한 5장 화면 위에 저장 가능한 오프라인 알 부화·육성·간식·선물·퀘스트·도감과 AR 연습 대전을 얹은 독립 실행형 Unity 테스트 빌드다. 제품 구조인 Kotlin·Compose 앱의 `Unity as a Library` 연결 코드는 그대로 유지되며, 테스트가 끝난 뒤 같은 Unity 장면을 `unityLibrary`로 내보내 결합한다.
 
 Unity Personal 계정은 저장소 Actions Secrets의 `UNITY_LICENSE`, `UNITY_EMAIL`, `UNITY_PASSWORD`가 필요하다. 값을 소스나 워크플로 본문에 직접 쓰지 않는다.

@@ -15,8 +15,8 @@ test("Unity build entry point creates the approved ARM64 debug APK", () => {
   assert.match(source, /AndroidSdkVersions\.AndroidApiLevel28/);
   assert.match(source, /BuildOptions\.Development/);
   assert.match(source, /private const string BundleVersion = "0\.14\.0"/);
-  assert.match(source, /private const int VersionCode = 14/);
-  assert.match(read("scripts/verify-apk.mjs"), /versionCode: "14"/);
+  assert.match(source, /private const int VersionCode = 15/);
+  assert.match(read("scripts/verify-apk.mjs"), /versionCode: "15"/);
   assert.match(source, /Bigimong-AR-v0\.14-debug\.apk/);
 });
 
@@ -62,9 +62,9 @@ test("Unity manifest enables the Animation module required by ArBattleActor", ()
   assert.equal(manifest.dependencies["com.unity.modules.animation"], "1.0.0");
 });
 
-test("foundation package version matches the v0.14 APK", () => {
+test("foundation package version matches the v0.15 APK", () => {
   const packageJson = JSON.parse(read("package.json"));
-  assert.equal(packageJson.version, "0.14.0");
+  assert.equal(packageJson.version, "0.15.0");
 });
 
 test("generated Android and Unity build state is excluded from source control", () => {
