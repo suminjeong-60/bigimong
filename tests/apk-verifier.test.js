@@ -8,7 +8,7 @@ import { inspectWithApkAnalyzer, validateMetadata, verifyApk } from "../scripts/
 const validMetadata = {
   applicationId: "com.bigimong.app",
   versionName: "0.14.0",
-  versionCode: "13",
+  versionCode: "14",
   minSdk: "28",
   targetSdk: "36",
   permissions: ["android.permission.CAMERA"],

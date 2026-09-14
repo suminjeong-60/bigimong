@@ -16,6 +16,7 @@ test("Unity build entry point creates the approved ARM64 debug APK", () => {
   assert.match(source, /BuildOptions\.Development/);
   assert.match(source, /private const string BundleVersion = "0\.14\.0"/);
   assert.match(source, /private const int VersionCode = 14/);
+  assert.match(read("scripts/verify-apk.mjs"), /versionCode: "14"/);
   assert.match(source, /Bigimong-AR-v0\.14-debug\.apk/);
 });
 
