@@ -1,6 +1,6 @@
-# 비기몽 제작 기반 v0.13
+# 비기몽 제작 기반 v0.14
 
-이번 v0.13 변경 내용과 검증 범위: [참고 디자인·AR 구성](docs/AR_IMPLEMENTATION_v0.13.md).
+이전 AR 설계와 검증 범위: [참고 디자인·AR 구성](docs/AR_IMPLEMENTATION_v0.13.md).
 
 비기몽의 성장·재화·전투 규칙을 실제 코드로 검증하기 위한 프로젝트입니다.
 
@@ -95,14 +95,14 @@ Android 앱은 Android Studio에서 `android` 폴더를 엽니다. 에뮬레이�
 
 1. GitHub 저장소의 `Settings > Secrets and variables > Actions`에 `UNITY_LICENSE`, `UNITY_EMAIL`, `UNITY_PASSWORD`를 등록합니다.
 2. `Actions > Build Bigimong AR debug APK > Run workflow`를 실행합니다.
-3. 성공한 실행의 `Artifacts`에서 `Bigimong-AR-v0.13-debug`를 내려받습니다.
-4. 압축을 풀어 `Bigimong-AR-v0.13-debug.apk`를 ARCore 지원 Android 기기에 설치합니다.
+3. 성공한 실행의 `Artifacts`에서 `Bigimong-AR-v0.14-debug`를 내려받습니다.
+4. 압축을 풀어 `Bigimong-AR-v0.14-debug.apk`를 ARCore 지원 Android 기기에 설치합니다.
 
 성공 artifact에는 다음 세 파일이 있어야 합니다.
 
-- `Bigimong-AR-v0.13-debug.apk`
-- `Bigimong-AR-v0.13-verification.json`
-- `Bigimong-AR-v0.13-debug.apk.sha256`
+- `Bigimong-AR-v0.14-debug.apk`
+- `Bigimong-AR-v0.14-verification.json`
+- `Bigimong-AR-v0.14-debug.apk.sha256`
 
 JSON의 `valid`가 `true`인지 확인하고, 내려받은 APK의 SHA-256이 `.sha256` 파일 및 JSON의 `sha256` 값과 같은지 확인합니다. 실제 GitHub Actions 성공과 실기기 실행 전에는 이 저장소 상태를 “APK 빌드 소스 준비 완료”로만 판단합니다.
 

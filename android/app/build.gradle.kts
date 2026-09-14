@@ -11,8 +11,8 @@ android {
         applicationId = "com.bigimong.app"
         minSdk = 28
         targetSdk = 37
-        versionCode = 13
-        versionName = "0.13.0"
+        versionCode = 14
+        versionName = "0.14.0"
         buildConfigField("String", "API_BASE_URL", "\"http://10.0.2.2:4180\"")
     }
 

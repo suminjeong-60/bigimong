@@ -11,10 +11,10 @@ namespace Bigimong.Editor
     public static class BigimongAndroidBuild
     {
         private const string ApplicationId = "com.bigimong.app";
-        private const string BundleVersion = "0.13.0";
-        private const int VersionCode = 13;
+        private const string BundleVersion = "0.14.0";
+        private const int VersionCode = 14;
         private const string ScenePath = "Assets/BigimongAR/Scenes/ArBattle.unity";
-        private const string ApkName = "Bigimong-AR-v0.13-debug.apk";
+        private const string ApkName = "Bigimong-AR-v0.14-debug.apk";
 
         public static void BuildDebugApk()
         {
@@ -29,6 +29,7 @@ namespace Bigimong.Editor
             Bigimong.AR.EditorChecks.SummonSequenceEditorChecks.RunSceneChecks();
             Bigimong.AR.EditorChecks.OfflineBetaEditorChecks.RunSceneChecks();
             Bigimong.AR.EditorChecks.ReferenceVisualEditorChecks.RunSceneChecks();
+            Bigimong.AR.EditorChecks.BigimongReferenceUiEditorChecks.RunSceneChecks();
             ConfigureAndroidPlayer();
             ArConfigurationEditorChecks.Run();
 

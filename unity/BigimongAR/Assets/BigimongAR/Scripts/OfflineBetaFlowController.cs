@@ -182,6 +182,17 @@ namespace Bigimong.AR
             SetPhase(OfflineBetaPhase.PetTestSelect);
         }
 
+        /// <summary>Persist the reference art's two avatar choices through the existing profile store.</summary>
+        public bool ApplyReferenceAvatar(AvatarProfile selected)
+        {
+            if (!IsActive || (Phase != OfflineBetaPhase.AvatarCreate && Phase != OfflineBetaPhase.PetTestSelect) || selected == null) return false;
+            selected.Normalize();
+            if (!selected.IsComplete || !AvatarProfileStore.Save(selected)) return false;
+            avatarCreator?.SetOnlineBattleMode();
+            OnAvatarSaved(selected);
+            return true;
+        }
+
         private void OnAvatarEditing()
         {
             if (!IsActive) return;

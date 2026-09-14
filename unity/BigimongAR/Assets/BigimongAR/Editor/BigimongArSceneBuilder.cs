@@ -55,6 +55,8 @@ namespace Bigimong.Editor
             var hud = CreateHud(bridge, out var trackingPanel, out var disconnectedPanel);
             var creator = CreateAvatarCreator(cameraObject.transform, hud.gameObject);
             CreateBetaMenus(offlineFlow);
+            var referenceUi = new GameObject("Reference Image UI").AddComponent<BigimongReferenceUi>();
+            Assign(referenceUi, "flow", offlineFlow);
             Assign(arena, "raycastManager", originObject.GetComponent<ARRaycastManager>());
             Assign(arena, "planeManager", originObject.GetComponent<ARPlaneManager>());
             Assign(arena, "placementIndicator", placement);
