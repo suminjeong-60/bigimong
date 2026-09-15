@@ -21,6 +21,9 @@ export function validateFree3dWorkflow(source) {
   if (!/^permissions:\s*\n\s+contents:\s*read\s*$/m.test(source)) errors.push("permissions must be contents: read");
   if (!/validate-free3d-manifest\.mjs/.test(source)) errors.push("manifest validation step is missing");
   if (!/apt-get install[^\n]*blender/.test(source)) errors.push("Blender installation step is missing");
+  if (!/apt-get install[^\n]*python3-numpy/.test(source)) {
+    errors.push("Blender glTF export requires python3-numpy");
+  }
   if (!/blender --background --python scripts\/blender_generate_bigimong\.py/.test(source)) {
     errors.push("Blender generation command is missing");
   }

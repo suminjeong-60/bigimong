@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { spawnSync } from "node:child_process";
@@ -188,6 +188,24 @@ test("free pilot workflow passes the offline-only policy validator", () => {
   assert.equal(report.paidServiceReferences, 0);
   assert.equal(report.artifact, "Bigimong-Free3D-v0.17-pilot");
   assert.equal(report.blenderGeneration, true);
+});
+
+test("free pilot workflow requires the glTF exporter's NumPy dependency", () => {
+  const directory = mkdtempSync(join(tmpdir(), "bigimong-free3d-dependency-"));
+  const file = join(directory, "missing-numpy.yml");
+  const workflow = readFileSync(new URL("../.github/workflows/build-free-3d-pilot.yml", import.meta.url), "utf8");
+  writeFileSync(file, workflow.replace(/\s+python3-numpy/g, ""));
+
+  try {
+    const result = spawnSync(process.execPath, ["scripts/validate-free3d-workflow.mjs", file], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /python3-numpy/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
 });
 
 test("free pilot workflow policy rejects credentials for a paid generator", () => {

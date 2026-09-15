@@ -47,7 +47,7 @@ jobs:
       - name: Install the Ubuntu Blender package
         run: |
           sudo apt-get update
-          sudo apt-get install --yes blender
+          sudo apt-get install --yes blender python3-numpy
           blender --version
 
       - name: Generate, rig, validate, export, and render
