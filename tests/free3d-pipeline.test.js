@@ -89,3 +89,25 @@ test("avatar builders preserve distinct identities and a detachable summoning me
     assert.ok(report.namedParts.includes(part), `missing avatar part ${part}`);
   }
 });
+
+test("Tyrannosaurus stages use independent proportions and wardrobe", () => {
+  const result = spawnSync("python3", [
+    "scripts/blender_generate_bigimong.py",
+    "--self-test-section",
+    "tyrannosaurs",
+  ], { cwd: root, encoding: "utf8" });
+
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.status, "TYRANNOSAUR_CONTRACT_OK");
+  assert.deepEqual(report.ids, ["tyrannosaurus_baby", "tyrannosaurus_teen", "tyrannosaurus_adult"]);
+  assert.equal(new Set(Object.values(report.profiles)).size, 3);
+  assert.deepEqual(report.targetHeightsM, [0.3, 0.9, 2.1]);
+  assert.deepEqual(report.wardrobe.tyrannosaurus_baby, ["ExplorerCap"]);
+  assert.ok(report.wardrobe.tyrannosaurus_teen.includes("ExplorerVest"));
+  assert.ok(report.wardrobe.tyrannosaurus_adult.includes("PackRoll"));
+  assert.equal(report.uniformStageScaling, false);
+  for (const part of ["Head", "Jaw", "Tail", "EyeWhiteLeft", "EyeWhiteRight", "Teeth"]) {
+    assert.ok(report.namedParts.includes(part), `missing Tyrannosaurus part ${part}`);
+  }
+});

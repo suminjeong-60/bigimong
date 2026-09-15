@@ -219,6 +219,11 @@ def main(argv: Sequence[str]) -> int:
 
         print(json.dumps(avatar_contract_report(), separators=(",", ":")))
         return 0
+    if args.self_test_section == "tyrannosaurs":
+        from free3d.tyrannosaur_builder import tyrannosaur_contract_report
+
+        print(json.dumps(tyrannosaur_contract_report(), separators=(",", ":")))
+        return 0
     return run_blender(args)
 
 

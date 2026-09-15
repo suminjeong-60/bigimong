@@ -162,6 +162,43 @@ def create_curve_tube(
     return curve_to_mesh(obj)
 
 
+def create_tapered_tube_mesh(
+    name: str,
+    collection: Any,
+    centerline: Sequence[tuple[float, float, float]],
+    radii: Sequence[tuple[float, float]],
+    *,
+    segments: int = 28,
+) -> Any:
+    """Build a closed cross-section mesh along a mostly Y-directed centerline."""
+    import bpy  # type: ignore
+
+    if len(centerline) < 2 or len(centerline) != len(radii):
+        raise ValueError("centerline and radii must have the same length above one")
+    vertices: list[tuple[float, float, float]] = []
+    for (center_x, center_y, center_z), (radius_x, radius_z) in zip(centerline, radii):
+        for index in range(segments):
+            angle = 2.0 * pi * index / segments
+            vertices.append((center_x + radius_x * cos(angle), center_y, center_z + radius_z * sin(angle)))
+    faces: list[tuple[int, ...]] = []
+    for ring in range(len(centerline) - 1):
+        start = ring * segments
+        next_start = (ring + 1) * segments
+        for index in range(segments):
+            nxt = (index + 1) % segments
+            faces.append((start + index, start + nxt, next_start + nxt, next_start + index))
+    faces.append(tuple(reversed(tuple(range(segments)))))
+    end = (len(centerline) - 1) * segments
+    faces.append(tuple(end + index for index in range(segments)))
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata(vertices, [], faces)
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    _link_object(collection, obj)
+    smooth_mesh(obj)
+    return obj
+
+
 def curve_to_mesh(obj: Any) -> Any:
     import bpy  # type: ignore
 
