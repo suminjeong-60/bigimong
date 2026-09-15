@@ -13,6 +13,43 @@ const pilotIds = [
   "tyrannosaurus_teen",
   "tyrannosaurus_adult",
 ];
+const pilotManifest = JSON.parse(readFileSync(new URL("../art/free3d/v0.17-pilot.json", import.meta.url), "utf8"));
+const approvedDetailParts = Object.fromEntries(pilotManifest.jobs.map((job) => [job.id, job.detailParts]));
+
+function completePilotReport(artifact) {
+  const digest = "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881";
+  const model = (id) => ({
+    id,
+    valid: true,
+    fbx_path: artifact,
+    glb_path: artifact,
+    atlas_path: artifact,
+    output_sha256: { fbx: digest, glb: digest, atlas: digest },
+    render_paths: Array(9).fill(artifact),
+    detail_parts: Object.fromEntries(approvedDetailParts[id].map((name) => [name, true])),
+    surface_export: {
+      valid: true,
+      materialCount: 1,
+      textureCount: 2,
+      imageCount: 2,
+      baseColorTexture: true,
+      roughnessTexture: true,
+      errors: [],
+    },
+    surface_contract: {
+      sourceTexture: "single_1k_rgba_atlas",
+      roughnessSource: "atlas_alpha",
+      glbRoughness: "metallicRoughnessTexture.green",
+      fbxUnityImport: "invert_atlas_alpha_into_mask_smoothness",
+    },
+  });
+  return {
+    valid: true,
+    generator: "blender-python",
+    pilotIndex: artifact,
+    models: pilotIds.map(model),
+  };
+}
 
 test("free 3D manifest defines the approved five-model sequence", () => {
   const result = spawnSync(process.execPath, [
@@ -73,30 +110,52 @@ test("free 3D report rejects a model with an unmodeled polish detail", async () 
   const directory = mkdtempSync(join(tmpdir(), "bigimong-free3d-report-polish-"));
   const artifact = join(directory, "artifact.bin");
   writeFileSync(artifact, "x");
-  const digest = "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881";
-  const model = (id) => ({
-    id,
-    valid: true,
-    fbx_path: artifact,
-    glb_path: artifact,
-    atlas_path: artifact,
-    output_sha256: { fbx: digest, glb: digest, atlas: digest },
-    render_paths: Array(9).fill(artifact),
-    detail_parts: { UpperMuzzle: true },
-  });
-  const report = {
-    valid: true,
-    generator: "blender-python",
-    pilotIndex: artifact,
-    models: pilotIds.map(model),
-  };
-  report.models[0].detail_parts.UpperMuzzle = false;
+  const report = completePilotReport(artifact);
+  report.models[0].detail_parts.EarLeft = false;
 
   try {
     const { validateFree3dReport } = await import("../scripts/validate-free3d-report.mjs");
     assert.throws(
-      () => validateFree3dReport(report, { root: directory }),
-      /avatar_male: missing polish details UpperMuzzle/,
+      () => validateFree3dReport(report, { root: directory, expectedDetailParts: approvedDetailParts }),
+      /avatar_male: missing polish details EarLeft/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("free 3D report rejects an omitted required polish detail", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "bigimong-free3d-report-omitted-polish-"));
+  const artifact = join(directory, "artifact.bin");
+  writeFileSync(artifact, "x");
+  const report = completePilotReport(artifact);
+  delete report.models[4].detail_parts.JacketBelt;
+
+  try {
+    const { validateFree3dReport } = await import("../scripts/validate-free3d-report.mjs");
+    assert.throws(
+      () => validateFree3dReport(report, { root: directory, expectedDetailParts: approvedDetailParts }),
+      /tyrannosaurus_adult: polish detail keys do not match manifest/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("free 3D report rejects a non-portable exported surface", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "bigimong-free3d-report-surface-"));
+  const artifact = join(directory, "artifact.bin");
+  writeFileSync(artifact, "x");
+  const report = completePilotReport(artifact);
+  report.models[2].surface_export.valid = false;
+  report.models[2].surface_export.roughnessTexture = false;
+  report.models[2].surface_export.errors = ["standard roughness texture is missing"];
+
+  try {
+    const { validateFree3dReport } = await import("../scripts/validate-free3d-report.mjs");
+    assert.throws(
+      () => validateFree3dReport(report, { root: directory, expectedDetailParts: approvedDetailParts }),
+      /tyrannosaurus_baby: portable GLB surface validation failed/,
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -218,14 +277,28 @@ from collections import Counter
 sys.path.insert(0, "scripts")
 import free3d.geometry as geometry
 faces = getattr(geometry, "closed_fin_faces", lambda: [])()
+vertices = [
+    (-1, -1, 0), (1, -1, 0), (0, -1, 1),
+    (-1, 1, 0), (1, 1, 0), (0, 1, 1),
+]
 edges = Counter()
+signed_volume = 0.0
 for face in faces:
     for index, first in enumerate(face):
         second = face[(index + 1) % len(face)]
         edges[tuple(sorted((first, second)))] += 1
+    for index in range(1, len(face) - 1):
+        a, b, c = (vertices[face[position]] for position in (0, index, index + 1))
+        cross = (
+            b[1] * c[2] - b[2] * c[1],
+            b[2] * c[0] - b[0] * c[2],
+            b[0] * c[1] - b[1] * c[0],
+        )
+        signed_volume += (a[0] * cross[0] + a[1] * cross[1] + a[2] * cross[2]) / 6.0
 print(json.dumps({
     "faceCount": len(faces),
     "boundaryEdges": sum(count != 2 for count in edges.values()),
+    "signedVolume": round(signed_volume, 6),
 }))
 `;
   const result = spawnSync("python3", ["-I", "-c", python], {
@@ -237,6 +310,7 @@ print(json.dumps({
   assert.deepEqual(JSON.parse(result.stdout), {
     faceCount: 5,
     boundaryEdges: 0,
+    signedVolume: 2,
   });
 });
 
@@ -276,6 +350,55 @@ with tempfile.TemporaryDirectory() as directory:
 
   assert.equal(result.status, 0, result.stderr);
   assert.deepEqual(JSON.parse(result.stdout), [148, 107, 184, 71]);
+});
+
+test("GLB export contract requires standard base-color and roughness textures", () => {
+  const python = `
+import json, struct, sys, tempfile
+from pathlib import Path
+sys.path.insert(0, "scripts")
+try:
+    from free3d.export_validation import inspect_glb_surface
+except ImportError:
+    inspect_glb_surface = lambda _path: {"valid": False, "errors": ["validator missing"]}
+
+def write_glb(path, pbr):
+    document = {
+        "asset": {"version": "2.0"},
+        "materials": [{"pbrMetallicRoughness": pbr}],
+        "textures": [{"source": 0}, {"source": 1}],
+        "images": [{"mimeType": "image/png"}, {"mimeType": "image/png"}],
+    }
+    encoded = json.dumps(document, separators=(",", ":")).encode("utf-8")
+    encoded += b" " * ((4 - len(encoded) % 4) % 4)
+    total = 12 + 8 + len(encoded)
+    path.write_bytes(struct.pack("<4sII", b"glTF", 2, total) + struct.pack("<I4s", len(encoded), b"JSON") + encoded)
+
+with tempfile.TemporaryDirectory() as directory:
+    good = Path(directory) / "good.glb"
+    bad = Path(directory) / "bad.glb"
+    write_glb(good, {"baseColorTexture": {"index": 0}, "metallicRoughnessTexture": {"index": 1}})
+    write_glb(bad, {"baseColorTexture": {"index": 0}, "roughnessFactor": 0.5})
+    print(json.dumps({"good": inspect_glb_surface(good), "bad": inspect_glb_surface(bad)}, sort_keys=True))
+`;
+  const result = spawnSync("python3", ["-I", "-c", python], {
+    cwd: root,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.deepEqual(report.good, {
+    baseColorTexture: true,
+    errors: [],
+    imageCount: 2,
+    materialCount: 1,
+    roughnessTexture: true,
+    textureCount: 2,
+    valid: true,
+  });
+  assert.equal(report.bad.valid, false);
+  assert.ok(report.bad.errors.includes("standard roughness texture is missing"));
 });
 
 test("Blender-style script execution resolves the bundled free3d package", () => {
@@ -333,6 +456,8 @@ result = AssetBuildResult(
     target_height_error_pct=0.0,
     required_parts={"Head": True, "Hair": False},
     detail_parts={"EarLeft": True},
+    surface_export={"valid": False, "errors": ["standard roughness texture is missing"]},
+    surface_contract={"roughnessSource": "atlas_alpha"},
 )
 print(json.dumps(validation_summary([result]), sort_keys=True))
 `;
@@ -419,6 +544,30 @@ print(json.dumps([
     "DorsalSpine01",
     "Pack.Roll",
   ]);
+});
+
+test("polish validation accepts only non-empty mesh objects", () => {
+  const python = `
+import json, sys
+from types import SimpleNamespace as NS
+sys.path.insert(0, "scripts")
+import free3d.validation as validation
+modeled = getattr(validation, "modeled_part_names", lambda _objects: set())
+objects = [
+    NS(name="EarLeft.001", type="MESH", data=NS(vertices=[1, 2, 3])),
+    NS(name="HairCrownShell", type="MESH", data=NS(vertices=[1])),
+    NS(name="JacketBelt", type="MESH", data=NS(vertices=[])),
+    NS(name="DorsalSpine01", type="EMPTY", data=None),
+]
+print(json.dumps(sorted(modeled(objects))))
+`;
+  const result = spawnSync("python3", ["-I", "-c", python], {
+    cwd: root,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), ["EarLeft", "HairCrownShell"]);
 });
 
 test("avatar builders preserve distinct identities and a detachable summoning medallion", () => {
@@ -512,6 +661,39 @@ test("free Blender rigs expose runtime actions, limits, and attachment bones", (
     assert.ok(report.requiredBones.includes(bone), `missing rig bone ${bone}`);
   }
   assert.ok(report.attachmentBones.includes("MedallionSocket"));
+});
+
+test("polish parts follow the anatomical rig segment they visually belong to", () => {
+  const python = `
+import json, sys
+sys.path.insert(0, "scripts")
+from free3d.rigging import _bone_for_object
+names = [
+    "ToeLeft01", "ToeRight03",
+    "ToothUpper1", "ToothLower1",
+    "DorsalSpine01", "DorsalSpine02", "DorsalSpine03", "DorsalSpine05",
+    "FingerClawLeft01", "FingerClawRight02",
+]
+print(json.dumps({name: _bone_for_object(name, "tyrannosaur") for name in names}, sort_keys=True))
+`;
+  const result = spawnSync("python3", ["-I", "-c", python], {
+    cwd: root,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    DorsalSpine01: "Head",
+    DorsalSpine02: "Neck",
+    DorsalSpine03: "Spine",
+    DorsalSpine05: "Tail.1",
+    FingerClawLeft01: "Hand.L",
+    FingerClawRight02: "Hand.R",
+    ToeLeft01: "Foot.L",
+    ToeRight03: "Foot.R",
+    ToothLower1: "Jaw",
+    ToothUpper1: "Head",
+  });
 });
 
 test("asset delivery enforces hard budgets and five review angles", () => {

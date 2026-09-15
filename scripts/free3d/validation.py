@@ -20,6 +20,18 @@ def logical_object_name(name: str) -> str:
     return BLENDER_NUMERIC_SUFFIX.sub("", name)
 
 
+def modeled_part_names(objects: list[Any]) -> set[str]:
+    """Return scoped logical names backed by actual non-empty mesh geometry."""
+    names = set()
+    for obj in objects:
+        if getattr(obj, "type", None) != "MESH":
+            continue
+        vertices = getattr(getattr(obj, "data", None), "vertices", None)
+        if vertices is not None and len(vertices) > 0:
+            names.add(logical_object_name(obj.name))
+    return names
+
+
 @dataclass
 class ValidationReport:
     valid: bool
@@ -167,7 +179,7 @@ def validate_character(character: Any, rig: Any, job: dict[str, Any], defaults: 
         if not present:
             errors.append(f"required part is missing: {name}")
 
-    object_names = {logical_object_name(obj.name) for obj in objects}
+    object_names = modeled_part_names(objects)
     detail_parts = {name: name in object_names for name in job.get("detailParts", [])}
     for name, present in detail_parts.items():
         if not present:

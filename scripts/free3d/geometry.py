@@ -210,11 +210,11 @@ def closed_tube_faces(ring_count: int, segments: int) -> list[tuple[int, ...]]:
 def closed_fin_faces() -> list[tuple[int, ...]]:
     """Return the five watertight faces of a triangular dorsal-fin prism."""
     return [
-        (0, 2, 1),
-        (3, 4, 5),
-        (0, 1, 4, 3),
-        (1, 2, 5, 4),
-        (2, 0, 3, 5),
+        (1, 2, 0),
+        (5, 4, 3),
+        (3, 4, 1, 0),
+        (4, 5, 2, 1),
+        (5, 3, 0, 2),
     ]
 
 

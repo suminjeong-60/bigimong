@@ -11,12 +11,25 @@ const APPROVED_IDS = [
   "tyrannosaurus_adult",
 ];
 
+const SURFACE_CONTRACT = {
+  sourceTexture: "single_1k_rgba_atlas",
+  roughnessSource: "atlas_alpha",
+  glbRoughness: "metallicRoughnessTexture.green",
+  fbxUnityImport: "invert_atlas_alpha_into_mask_smoothness",
+};
+
 function sha256(path) {
   return createHash("sha256").update(readFileSync(path)).digest("hex");
 }
 
-export function validateFree3dReport(report, { root = process.cwd() } = {}) {
+function manifestDetailParts(root) {
+  const manifest = JSON.parse(readFileSync(resolve(root, "art/free3d/v0.17-pilot.json"), "utf8"));
+  return Object.fromEntries((manifest.jobs ?? []).map((job) => [job.id, job.detailParts ?? []]));
+}
+
+export function validateFree3dReport(report, { root = process.cwd(), expectedDetailParts } = {}) {
   const errors = [];
+  const approvedDetails = expectedDetailParts ?? manifestDetailParts(root);
   if (report?.valid !== true) errors.push("report valid must be true");
   if (report?.generator !== "blender-python") errors.push("generator must be blender-python");
   if (!Array.isArray(report?.models) || report.models.length !== 5) errors.push("report must contain five models");
@@ -27,9 +40,23 @@ export function validateFree3dReport(report, { root = process.cwd() } = {}) {
     const detailParts = model.detail_parts && typeof model.detail_parts === "object"
       ? Object.entries(model.detail_parts)
       : [];
+    const detailNames = detailParts.map(([name]) => name);
+    const expectedNames = approvedDetails[model.id] ?? [];
+    if (detailNames.length !== expectedNames.length || !expectedNames.every((name) => detailNames.includes(name))) {
+      errors.push(`${model.id}: polish detail keys do not match manifest`);
+    }
     const missingDetails = detailParts.filter(([, present]) => present !== true).map(([name]) => name);
     if (detailParts.length === 0) errors.push(`${model.id}: polish detail report is missing`);
     if (missingDetails.length) errors.push(`${model.id}: missing polish details ${missingDetails.join(", ")}`);
+    if (model.surface_export?.valid !== true
+        || model.surface_export?.materialCount !== 1
+        || model.surface_export?.baseColorTexture !== true
+        || model.surface_export?.roughnessTexture !== true) {
+      errors.push(`${model.id}: portable GLB surface validation failed`);
+    }
+    if (Object.entries(SURFACE_CONTRACT).some(([key, value]) => model.surface_contract?.[key] !== value)) {
+      errors.push(`${model.id}: surface import contract mismatch`);
+    }
     for (const [kind, pathValue] of Object.entries({ fbx: model.fbx_path, glb: model.glb_path, atlas: model.atlas_path })) {
       const path = isAbsolute(pathValue) ? pathValue : resolve(root, pathValue);
       if (!existsSync(path)) {

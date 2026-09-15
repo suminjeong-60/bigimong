@@ -45,6 +45,8 @@ class AssetBuildResult:
     control_bones: int
     required_parts: dict[str, bool]
     detail_parts: dict[str, bool]
+    surface_export: dict[str, Any]
+    surface_contract: dict[str, str]
 
 
 def self_test() -> int:
@@ -159,6 +161,9 @@ def build_asset(bpy: Any, job: dict[str, Any], defaults: dict[str, Any], output_
     fbx_path = model_dir / f"{job['outputStem']}.fbx"
     glb_path = model_dir / f"{job['outputStem']}.glb"
     export_character(bpy, root, fbx_path, glb_path)
+    from free3d.export_validation import inspect_glb_surface, surface_import_contract
+
+    surface_export = inspect_glb_surface(glb_path)
 
     render_paths: list[str] = []
     if render:
@@ -179,9 +184,9 @@ def build_asset(bpy: Any, job: dict[str, Any], defaults: dict[str, Any], output_
         bones=len(rig.deform_bones) + len(rig.control_bones),
         actions=list(rig.actions),
         warnings=list(validation.warnings),
-        valid=validation.valid,
+        valid=validation.valid and surface_export["valid"],
         render_paths=render_paths,
-        errors=list(validation.errors),
+        errors=[*validation.errors, *surface_export["errors"]],
         source_git_blob_sha=job["sourceGitBlobSha"],
         output_sha256={
             "fbx": sha256(fbx_path),
@@ -195,6 +200,8 @@ def build_asset(bpy: Any, job: dict[str, Any], defaults: dict[str, Any], output_
         control_bones=validation.control_bones,
         required_parts=validation.required_parts,
         detail_parts=validation.detail_parts,
+        surface_export=surface_export,
+        surface_contract=surface_import_contract(),
     )
 
 
