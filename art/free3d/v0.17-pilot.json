@@ -1,0 +1,234 @@
+{
+  "schemaVersion": 1,
+  "release": "0.17",
+  "generator": "blender-python",
+  "paidApisEnabled": false,
+  "deterministicSeed": 17015,
+  "defaults": {
+    "textureSize": 1024,
+    "targetTrianglesMin": 18000,
+    "targetTrianglesMax": 25000,
+    "hardTriangleLimit": 30000,
+    "materialLimit": 4,
+    "deformBoneLimit": 64,
+    "controlBoneLimit": 16,
+    "originToleranceM": 0.001,
+    "requiredActions": [
+      "Idle",
+      "Summon",
+      "Attack",
+      "DodgeLeft",
+      "DodgeRight",
+      "Hit",
+      "Knockout",
+      "Victory"
+    ]
+  },
+  "jobs": [
+    {
+      "id": "avatar_male",
+      "resourceName": "Avatar_Masculine",
+      "sourceAsset": "unity/BigimongAR/Assets/BigimongAR/Resources/ReferenceUi/avatar.jpg",
+      "sourceGitBlobSha": "73c8bcab32521e4aaf1eba3ad13132b9e00ce97b",
+      "cropTopLeft": [150, 405, 365, 660],
+      "targetHeightM": 1.65,
+      "bodyRatios": {
+        "headToHeight": 0.265,
+        "shoulderToHeight": 0.255,
+        "legToHeight": 0.445,
+        "eyeToFaceWidth": 0.185,
+        "handToHeight": 0.105,
+        "footToHeight": 0.135
+      },
+      "palette": {
+        "skin": "#F4B08E",
+        "skinHighlight": "#FFD0B4",
+        "hair": "#45251E",
+        "iris": "#6A3C22",
+        "clothing": "#34363D",
+        "medallion": "#F4B72C"
+      },
+      "requiredParts": [
+        "Body",
+        "Head",
+        "Hair_SweptLocks",
+        "Eye_L",
+        "Eye_R",
+        "Top_Sleeveless",
+        "Shorts",
+        "Hand_L",
+        "Hand_R",
+        "Foot_L",
+        "Foot_R",
+        "Medallion"
+      ],
+      "inferredRear": true,
+      "outputStem": "Avatar_Masculine"
+    },
+    {
+      "id": "avatar_female",
+      "resourceName": "Avatar_Feminine",
+      "sourceAsset": "unity/BigimongAR/Assets/BigimongAR/Resources/ReferenceUi/avatar.jpg",
+      "sourceGitBlobSha": "73c8bcab32521e4aaf1eba3ad13132b9e00ce97b",
+      "cropTopLeft": [545, 405, 375, 660],
+      "targetHeightM": 1.62,
+      "bodyRatios": {
+        "headToHeight": 0.27,
+        "shoulderToHeight": 0.225,
+        "legToHeight": 0.45,
+        "eyeToFaceWidth": 0.19,
+        "handToHeight": 0.1,
+        "footToHeight": 0.13
+      },
+      "palette": {
+        "skin": "#F4B08E",
+        "skinHighlight": "#FFD0B4",
+        "hair": "#4A2922",
+        "iris": "#6A3C22",
+        "clothing": "#34363D",
+        "medallion": "#F4B72C"
+      },
+      "requiredParts": [
+        "Body",
+        "Head",
+        "Hair_Bob",
+        "Eye_L",
+        "Eye_R",
+        "Top_Sleeveless",
+        "Shorts",
+        "Hand_L",
+        "Hand_R",
+        "Foot_L",
+        "Foot_R",
+        "Medallion"
+      ],
+      "inferredRear": true,
+      "outputStem": "Avatar_Feminine"
+    },
+    {
+      "id": "tyrannosaurus_baby",
+      "resourceName": "Bigimong_01_Baby",
+      "sourceAsset": "android/app/src/main/res/drawable-nodpi/bigimong_01_growth.webp",
+      "sourceGitBlobSha": "2201ab23f47f27eb97d4cafc89be4c6171e4d7e1",
+      "targetHeightM": 0.3,
+      "bodyRatios": {
+        "headToHeight": 0.43,
+        "bodyLengthToHeight": 1.25,
+        "tailLengthToHeight": 0.72,
+        "legToHeight": 0.29,
+        "eyeToHeadWidth": 0.19,
+        "jawLengthToHead": 0.56
+      },
+      "palette": {
+        "body": "#DE3F35",
+        "bodyHighlight": "#F45C4D",
+        "underside": "#F2C78F",
+        "iris": "#6E421F",
+        "cap": "#F3C331",
+        "teeth": "#FFF3D6"
+      },
+      "requiredParts": [
+        "Body",
+        "Head",
+        "Jaw",
+        "Eye_L",
+        "Eye_R",
+        "Teeth",
+        "Arm_L",
+        "Arm_R",
+        "Leg_L",
+        "Leg_R",
+        "Tail",
+        "ExplorerCap"
+      ],
+      "inferredRear": true,
+      "outputStem": "Bigimong_01_Baby"
+    },
+    {
+      "id": "tyrannosaurus_teen",
+      "resourceName": "Bigimong_01_Teen",
+      "sourceAsset": "android/app/src/main/res/drawable-nodpi/bigimong_01_youth.webp",
+      "sourceGitBlobSha": "c1f9cd52edac9d01bab441137a19d81b259b73cb",
+      "targetHeightM": 0.9,
+      "bodyRatios": {
+        "headToHeight": 0.34,
+        "bodyLengthToHeight": 1.48,
+        "tailLengthToHeight": 0.9,
+        "legToHeight": 0.39,
+        "eyeToHeadWidth": 0.145,
+        "jawLengthToHead": 0.68
+      },
+      "palette": {
+        "body": "#CF342E",
+        "bodyHighlight": "#EA4B3E",
+        "underside": "#EEC28A",
+        "iris": "#69401F",
+        "outerwear": "#B52D27",
+        "cap": "#363A45",
+        "pack": "#75523D"
+      },
+      "requiredParts": [
+        "Body",
+        "Head",
+        "Jaw",
+        "Eye_L",
+        "Eye_R",
+        "Teeth",
+        "Arm_L",
+        "Arm_R",
+        "Leg_L",
+        "Leg_R",
+        "Tail",
+        "ExplorerVest",
+        "ExplorerCap",
+        "Backpack"
+      ],
+      "inferredRear": true,
+      "outputStem": "Bigimong_01_Teen"
+    },
+    {
+      "id": "tyrannosaurus_adult",
+      "resourceName": "Bigimong_01_Adult",
+      "sourceAsset": "android/app/src/main/res/drawable-nodpi/bigimong_01_adult.webp",
+      "sourceGitBlobSha": "4cf628cd0c44217f384be56b205f3eb502e58ac4",
+      "targetHeightM": 2.1,
+      "bodyRatios": {
+        "headToHeight": 0.31,
+        "bodyLengthToHeight": 1.62,
+        "tailLengthToHeight": 1.08,
+        "legToHeight": 0.44,
+        "eyeToHeadWidth": 0.12,
+        "jawLengthToHead": 0.75
+      },
+      "palette": {
+        "body": "#C92E27",
+        "bodyHighlight": "#E64837",
+        "underside": "#E9BD82",
+        "iris": "#60391D",
+        "outerwear": "#E99328",
+        "cap": "#F0B829",
+        "pack": "#69503B",
+        "rollMat": "#538197"
+      },
+      "requiredParts": [
+        "Body",
+        "Head",
+        "Jaw",
+        "Eye_L",
+        "Eye_R",
+        "Teeth",
+        "Arm_L",
+        "Arm_R",
+        "Leg_L",
+        "Leg_R",
+        "Tail",
+        "ExpeditionJacket",
+        "ExplorerCap",
+        "Backpack",
+        "RolledMat"
+      ],
+      "inferredRear": true,
+      "outputStem": "Bigimong_01_Adult"
+    }
+  ]
+}
