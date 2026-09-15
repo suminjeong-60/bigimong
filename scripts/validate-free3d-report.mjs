@@ -48,10 +48,19 @@ export function validateFree3dReport(report, { root = process.cwd(), expectedDet
     const missingDetails = detailParts.filter(([, present]) => present !== true).map(([name]) => name);
     if (detailParts.length === 0) errors.push(`${model.id}: polish detail report is missing`);
     if (missingDetails.length) errors.push(`${model.id}: missing polish details ${missingDetails.join(", ")}`);
+    const roughnessRange = model.surface_export?.roughnessGreenRange;
+    const hasSemanticRoughness = Array.isArray(roughnessRange)
+      && roughnessRange.length === 2
+      && roughnessRange.every((value) => Number.isInteger(value) && value >= 0 && value <= 255)
+      && roughnessRange[0] < roughnessRange[1];
     if (model.surface_export?.valid !== true
         || model.surface_export?.materialCount !== 1
+        || model.surface_export?.textureCount !== 2
+        || model.surface_export?.imageCount !== 2
         || model.surface_export?.baseColorTexture !== true
-        || model.surface_export?.roughnessTexture !== true) {
+        || model.surface_export?.roughnessTexture !== true
+        || model.surface_export?.repackedRoughness !== true
+        || !hasSemanticRoughness) {
       errors.push(`${model.id}: portable GLB surface validation failed`);
     }
     if (Object.entries(SURFACE_CONTRACT).some(([key, value]) => model.surface_contract?.[key] !== value)) {

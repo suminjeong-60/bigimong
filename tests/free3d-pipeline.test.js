@@ -34,6 +34,8 @@ function completePilotReport(artifact) {
       imageCount: 2,
       baseColorTexture: true,
       roughnessTexture: true,
+      repackedRoughness: true,
+      roughnessGreenRange: [71, 184],
       errors: [],
     },
     surface_contract: {
@@ -156,6 +158,24 @@ test("free 3D report rejects a non-portable exported surface", async () => {
     assert.throws(
       () => validateFree3dReport(report, { root: directory, expectedDetailParts: approvedDetailParts }),
       /tyrannosaurus_baby: portable GLB surface validation failed/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("free 3D report rejects a roughness payload without semantic variation", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "bigimong-free3d-report-flat-roughness-"));
+  const artifact = join(directory, "artifact.bin");
+  writeFileSync(artifact, "x");
+  const report = completePilotReport(artifact);
+  report.models[3].surface_export.roughnessGreenRange = [107, 107];
+
+  try {
+    const { validateFree3dReport } = await import("../scripts/validate-free3d-report.mjs");
+    assert.throws(
+      () => validateFree3dReport(report, { root: directory, expectedDetailParts: approvedDetailParts }),
+      /tyrannosaurus_teen: portable GLB surface validation failed/,
     );
   } finally {
     rmSync(directory, { recursive: true, force: true });
@@ -354,7 +374,7 @@ with tempfile.TemporaryDirectory() as directory:
 
 test("GLB export contract requires standard base-color and roughness textures", () => {
   const python = `
-import json, struct, sys, tempfile
+import binascii, json, struct, sys, tempfile, zlib
 from pathlib import Path
 sys.path.insert(0, "scripts")
 try:
@@ -362,23 +382,49 @@ try:
 except ImportError:
     inspect_glb_surface = lambda _path: {"valid": False, "errors": ["validator missing"]}
 
+def png(pixels):
+    def chunk(kind, payload):
+        return struct.pack(">I", len(payload)) + kind + payload + struct.pack(">I", binascii.crc32(kind + payload) & 0xFFFFFFFF)
+    raw = b"\\x00" + b"".join(bytes(pixel) for pixel in pixels)
+    ihdr = struct.pack(">IIBBBBB", len(pixels), 1, 8, 2, 0, 0, 0)
+    return b"\\x89PNG\\r\\n\\x1a\\n" + chunk(b"IHDR", ihdr) + chunk(b"IDAT", zlib.compress(raw)) + chunk(b"IEND", b"")
+
+def aligned(payload):
+    return payload + b"\\x00" * ((4 - len(payload) % 4) % 4)
+
 def write_glb(path, pbr):
+    base = png([(220, 60, 50), (245, 190, 130)])
+    roughness = png([(0, 71, 0), (0, 184, 0)])
+    first = aligned(base)
+    binary = first + aligned(roughness)
     document = {
         "asset": {"version": "2.0"},
         "materials": [{"pbrMetallicRoughness": pbr}],
         "textures": [{"source": 0}, {"source": 1}],
-        "images": [{"mimeType": "image/png"}, {"mimeType": "image/png"}],
+        "images": [
+            {"mimeType": "image/png", "bufferView": 0},
+            {"mimeType": "image/png", "bufferView": 1},
+        ],
+        "buffers": [{"byteLength": len(binary)}],
+        "bufferViews": [
+            {"buffer": 0, "byteOffset": 0, "byteLength": len(base)},
+            {"buffer": 0, "byteOffset": len(first), "byteLength": len(roughness)},
+        ],
     }
     encoded = json.dumps(document, separators=(",", ":")).encode("utf-8")
     encoded += b" " * ((4 - len(encoded) % 4) % 4)
-    total = 12 + 8 + len(encoded)
-    path.write_bytes(struct.pack("<4sII", b"glTF", 2, total) + struct.pack("<I4s", len(encoded), b"JSON") + encoded)
+    total = 12 + 8 + len(encoded) + 8 + len(binary)
+    path.write_bytes(
+        struct.pack("<4sII", b"glTF", 2, total)
+        + struct.pack("<I4s", len(encoded), b"JSON") + encoded
+        + struct.pack("<I4s", len(binary), b"BIN\\x00") + binary
+    )
 
 with tempfile.TemporaryDirectory() as directory:
     good = Path(directory) / "good.glb"
     bad = Path(directory) / "bad.glb"
     write_glb(good, {"baseColorTexture": {"index": 0}, "metallicRoughnessTexture": {"index": 1}})
-    write_glb(bad, {"baseColorTexture": {"index": 0}, "roughnessFactor": 0.5})
+    write_glb(bad, {"baseColorTexture": {"index": 0}, "metallicRoughnessTexture": {}})
     print(json.dumps({"good": inspect_glb_surface(good), "bad": inspect_glb_surface(bad)}, sort_keys=True))
 `;
   const result = spawnSync("python3", ["-I", "-c", python], {
@@ -393,12 +439,14 @@ with tempfile.TemporaryDirectory() as directory:
     errors: [],
     imageCount: 2,
     materialCount: 1,
+    repackedRoughness: true,
+    roughnessGreenRange: [71, 184],
     roughnessTexture: true,
     textureCount: 2,
     valid: true,
   });
   assert.equal(report.bad.valid, false);
-  assert.ok(report.bad.errors.includes("standard roughness texture is missing"));
+  assert.ok(report.bad.errors.includes("roughness texture reference is invalid"));
 });
 
 test("Blender-style script execution resolves the bundled free3d package", () => {
@@ -554,9 +602,10 @@ sys.path.insert(0, "scripts")
 import free3d.validation as validation
 modeled = getattr(validation, "modeled_part_names", lambda _objects: set())
 objects = [
-    NS(name="EarLeft.001", type="MESH", data=NS(vertices=[1, 2, 3])),
-    NS(name="HairCrownShell", type="MESH", data=NS(vertices=[1])),
-    NS(name="JacketBelt", type="MESH", data=NS(vertices=[])),
+    NS(name="EarLeft.001", type="MESH", data=NS(vertices=[1, 2, 3], polygons=[1])),
+    NS(name="HairCrownShell", type="MESH", data=NS(vertices=[1, 2, 3], polygons=[1])),
+    NS(name="VertexOnlyBadge", type="MESH", data=NS(vertices=[1], polygons=[])),
+    NS(name="JacketBelt", type="MESH", data=NS(vertices=[], polygons=[])),
     NS(name="DorsalSpine01", type="EMPTY", data=None),
 ]
 print(json.dumps(sorted(modeled(objects))))

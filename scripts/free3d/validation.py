@@ -26,8 +26,10 @@ def modeled_part_names(objects: list[Any]) -> set[str]:
     for obj in objects:
         if getattr(obj, "type", None) != "MESH":
             continue
-        vertices = getattr(getattr(obj, "data", None), "vertices", None)
-        if vertices is not None and len(vertices) > 0:
+        data = getattr(obj, "data", None)
+        vertices = getattr(data, "vertices", None)
+        polygons = getattr(data, "polygons", None)
+        if vertices is not None and polygons is not None and len(vertices) > 0 and len(polygons) > 0:
             names.add(logical_object_name(obj.name))
     return names
 
