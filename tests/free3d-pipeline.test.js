@@ -93,6 +93,53 @@ test("Blender generator accepts the headless smoke-render gate", () => {
   assert.doesNotMatch(result.stderr, /unrecognized arguments/);
 });
 
+test("Blender generator exposes invalid model reasons without Blender", () => {
+  const python = `
+import json, sys
+sys.path.insert(0, "scripts")
+from types import SimpleNamespace as NS
+from blender_generate_bigimong import validation_summary
+result = NS(
+    id="avatar_male",
+    valid=False,
+    errors=["triangle_count exceeds 30000"],
+    warnings=["triangle_count 31000 is outside target range 18000..25000"],
+    triangle_count=31000,
+    material_count=1,
+    texture_size=1024,
+    deform_bones=19,
+    control_bones=4,
+    origin_error_m=0.0,
+    target_height_error_pct=0.0,
+    required_parts={"Head": True, "Hair": False},
+)
+print(json.dumps(validation_summary([result]), sort_keys=True))
+`;
+  const result = spawnSync("python3", ["-I", "-c", python], {
+    cwd: root,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    invalidModels: [{
+      id: "avatar_male",
+      errors: ["triangle_count exceeds 30000"],
+      warnings: ["triangle_count 31000 is outside target range 18000..25000"],
+      metrics: {
+        triangleCount: 31000,
+        materialCount: 1,
+        textureSize: 1024,
+        deformBones: 19,
+        controlBones: 4,
+        originErrorM: 0,
+        targetHeightErrorPct: 0,
+      },
+      missingParts: ["Hair"],
+    }],
+  });
+});
+
 test("avatar builders preserve distinct identities and a detachable summoning medallion", () => {
   const result = spawnSync("python3", [
     "scripts/blender_generate_bigimong.py",
@@ -275,6 +322,24 @@ test("free pilot workflow gates production on a headless smoke render", () => {
       assert.notEqual(result.status, 0, `${token} must be required`);
       assert.match(result.stderr, /headless|dependency|smoke/i);
     }
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("free pilot workflow preserves invalid model diagnostics", () => {
+  const directory = mkdtempSync(join(tmpdir(), "bigimong-free3d-diagnostics-"));
+  const file = join(directory, "missing-always.yml");
+  const workflow = readFileSync(new URL("../.github/workflows/build-free-3d-pilot.yml", import.meta.url), "utf8");
+  writeFileSync(file, workflow.replaceAll("if: always()", ""));
+
+  try {
+    const result = spawnSync(process.execPath, ["scripts/validate-free3d-workflow.mjs", file], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /diagnostic/i);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }

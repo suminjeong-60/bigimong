@@ -45,6 +45,9 @@ export function validateFree3dWorkflow(source) {
   if (!/blender --background --python scripts\/blender_generate_bigimong\.py/.test(source)) {
     errors.push("Blender generation command is missing");
   }
+  if ((source.match(/if:\s*always\(\)/g) ?? []).length < 2) {
+    errors.push("diagnostic listing and artifact upload must run after model validation failure");
+  }
   if (!/name:\s*Bigimong-Free3D-v0\.17-pilot/.test(source)) errors.push("approved artifact name is missing");
   if (!/retention-days:\s*14/.test(source)) errors.push("artifact retention must be 14 days");
   if (!/timeout-minutes:\s*45/.test(source)) errors.push("workflow timeout must be 45 minutes");

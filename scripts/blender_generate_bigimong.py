@@ -200,6 +200,30 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def validation_summary(results: Sequence[Any]) -> dict[str, Any]:
+    return {
+        "invalidModels": [
+            {
+                "id": result.id,
+                "errors": list(result.errors),
+                "warnings": list(result.warnings),
+                "metrics": {
+                    "triangleCount": result.triangle_count,
+                    "materialCount": result.material_count,
+                    "textureSize": result.texture_size,
+                    "deformBones": result.deform_bones,
+                    "controlBones": result.control_bones,
+                    "originErrorM": result.origin_error_m,
+                    "targetHeightErrorPct": result.target_height_error_pct,
+                },
+                "missingParts": [name for name, present in result.required_parts.items() if not present],
+            }
+            for result in results
+            if not result.valid
+        ]
+    }
+
+
 def run_smoke_render(bpy: Any, output_dir: Path) -> int:
     from free3d.rendering import _aim_camera, _configure_scene, _ensure_studio
 
@@ -271,7 +295,10 @@ def run_blender(args: argparse.Namespace) -> int:
         "models": [asdict(result) for result in results],
     }
     report_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
-    print(json.dumps({"status": "OK" if payload["valid"] else "INVALID", "report": str(report_path)}))
+    status = {"status": "OK" if payload["valid"] else "INVALID", "report": str(report_path)}
+    if not payload["valid"]:
+        status.update(validation_summary(results))
+    print(json.dumps(status))
     return 0 if payload["valid"] else 1
 
 

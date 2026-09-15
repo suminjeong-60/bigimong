@@ -69,9 +69,11 @@ jobs:
         run: node scripts/validate-free3d-report.mjs build/free3d-v017/bigimong-v017-model-report.json
 
       - name: List review artifact tree
+        if: always()
         run: find build/free3d-v017 -maxdepth 4 -type f -print | sort
 
       - name: Upload free 3D pilot review artifact
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: Bigimong-Free3D-v0.17-pilot
