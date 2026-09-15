@@ -24,6 +24,24 @@ export function validateFree3dWorkflow(source) {
   if (!/apt-get install[^\n]*python3-numpy/.test(source)) {
     errors.push("Blender glTF export requires python3-numpy");
   }
+  for (const dependency of ["libegl1", "libgl1-mesa-dri", "xvfb", "xauth"]) {
+    const packagePattern = new RegExp(`apt-get install[^\\n]*\\b${dependency}\\b`);
+    if (!packagePattern.test(source)) errors.push(`headless Blender dependency is missing: ${dependency}`);
+  }
+  if (!/blender --version \| grep -F ["']Blender 4\.0\.2["']/.test(source)) {
+    errors.push("pinned headless Blender version check is missing");
+  }
+  const headlessCommand = /xvfb-run --auto-servernum blender --background --python scripts\/blender_generate_bigimong\.py/g;
+  if ((source.match(headlessCommand) ?? []).length < 2) {
+    errors.push("headless Blender must wrap both smoke and production renders");
+  }
+  const smokeIndex = source.indexOf("--smoke-render");
+  const productionIndex = source.indexOf("--manifest art/free3d/v0.17-pilot.json");
+  if (smokeIndex < 0 || !/test -s build\/free3d-v017\/headless-smoke\.png/.test(source)) {
+    errors.push("headless smoke render gate is missing");
+  } else if (productionIndex < 0 || smokeIndex > productionIndex) {
+    errors.push("headless smoke render must run before production generation");
+  }
   if (!/blender --background --python scripts\/blender_generate_bigimong\.py/.test(source)) {
     errors.push("Blender generation command is missing");
   }

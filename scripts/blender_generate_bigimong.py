@@ -71,6 +71,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--output-dir", type=Path, default=Path("build/free3d-v017"))
     parser.add_argument("--only")
     parser.add_argument("--render", action="store_true")
+    parser.add_argument("--smoke-render", action="store_true")
     parser.add_argument("--self-test", action="store_true")
     parser.add_argument("--self-test-section", choices=("avatars", "tyrannosaurs", "rigging", "delivery"))
     return parser.parse_args(forwarded_args(argv))
@@ -199,8 +200,36 @@ def sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def run_smoke_render(bpy: Any, output_dir: Path) -> int:
+    from free3d.rendering import _aim_camera, _configure_scene, _ensure_studio
+
+    reset_scene(bpy)
+    output_dir.mkdir(parents=True, exist_ok=True)
+    _configure_scene(bpy)
+    camera, marker = _ensure_studio(bpy)
+    marker.location = (0.0, 0.0, 0.5)
+    bpy.context.view_layer.update()
+    _aim_camera(camera, (0.0, 0.0, 0.5), (2.5, -2.5, 2.0), 2.5)
+
+    scene = bpy.context.scene
+    scene.render.resolution_x = scene.render.resolution_y = 32
+    smoke_path = output_dir / "headless-smoke.png"
+    scene.render.filepath = str(smoke_path)
+    bpy.ops.render.render(write_still=True)
+    if not smoke_path.is_file() or smoke_path.stat().st_size == 0:
+        raise RuntimeError(f"headless smoke render was not written: {smoke_path}")
+    print(json.dumps({
+        "status": "SMOKE_RENDER_OK",
+        "engine": scene.render.engine,
+        "path": str(smoke_path),
+    }))
+    return 0
+
+
 def run_blender(args: argparse.Namespace) -> int:
     bpy = require_blender()
+    if args.smoke_render:
+        return run_smoke_render(bpy, args.output_dir)
     manifest = json.loads(args.manifest.read_text(encoding="utf-8"))
     random.seed(int(manifest["deterministicSeed"]))
     try:

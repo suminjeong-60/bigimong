@@ -44,15 +44,23 @@ jobs:
           node scripts/validate-free3d-manifest.mjs art/free3d/v0.17-pilot.json
           node scripts/validate-free3d-workflow.mjs .github/workflows/build-free-3d-pilot.yml
 
-      - name: Install the Ubuntu Blender package
+      - name: Install the pinned headless Blender runtime
         run: |
           sudo apt-get update
-          sudo apt-get install --yes blender python3-numpy
-          blender --version
+          sudo apt-get install --yes blender python3-numpy libegl1 libgl1-mesa-dri xvfb xauth
+          blender --version | grep -F "Blender 4.0.2"
+
+      - name: Verify headless Blender smoke render
+        run: |
+          ldconfig -p | grep -F libEGL.so.1
+          xvfb-run --auto-servernum blender --background --python scripts/blender_generate_bigimong.py -- \
+            --output-dir build/free3d-v017 \
+            --smoke-render
+          test -s build/free3d-v017/headless-smoke.png
 
       - name: Generate, rig, validate, export, and render
         run: |
-          blender --background --python scripts/blender_generate_bigimong.py -- \
+          xvfb-run --auto-servernum blender --background --python scripts/blender_generate_bigimong.py -- \
             --manifest art/free3d/v0.17-pilot.json \
             --output-dir build/free3d-v017 \
             --render

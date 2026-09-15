@@ -82,6 +82,17 @@ test("Blender-style script execution resolves the bundled free3d package", () =>
   assert.equal(JSON.parse(result.stdout).status, "SELF_TEST_OK");
 });
 
+test("Blender generator accepts the headless smoke-render gate", () => {
+  const result = spawnSync("python3", [
+    "scripts/blender_generate_bigimong.py",
+    "--smoke-render",
+  ], { cwd: root, encoding: "utf8" });
+
+  assert.equal(result.status, 1);
+  assert.match(result.stderr, /Production generation must run through Blender/);
+  assert.doesNotMatch(result.stderr, /unrecognized arguments/);
+});
+
 test("avatar builders preserve distinct identities and a detachable summoning medallion", () => {
   const result = spawnSync("python3", [
     "scripts/blender_generate_bigimong.py",
@@ -235,6 +246,35 @@ test("free pilot workflow requires the glTF exporter's NumPy dependency", () => 
     });
     assert.notEqual(result.status, 0);
     assert.match(result.stderr, /python3-numpy/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("free pilot workflow gates production on a headless smoke render", () => {
+  const directory = mkdtempSync(join(tmpdir(), "bigimong-free3d-headless-"));
+  const workflow = readFileSync(new URL("../.github/workflows/build-free-3d-pilot.yml", import.meta.url), "utf8");
+  const required = [
+    "libegl1",
+    "libgl1-mesa-dri",
+    "xvfb",
+    "xauth",
+    "Blender 4.0.2",
+    "--smoke-render",
+    "xvfb-run --auto-servernum",
+  ];
+
+  try {
+    for (const token of required) {
+      const file = join(directory, `${token.replaceAll(/[^a-z0-9]/gi, "-")}.yml`);
+      writeFileSync(file, workflow.replaceAll(token, ""));
+      const result = spawnSync(process.execPath, ["scripts/validate-free3d-workflow.mjs", file], {
+        cwd: root,
+        encoding: "utf8",
+      });
+      assert.notEqual(result.status, 0, `${token} must be required`);
+      assert.match(result.stderr, /headless|dependency|smoke/i);
+    }
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
