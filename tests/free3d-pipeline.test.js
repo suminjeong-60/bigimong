@@ -67,6 +67,21 @@ test("Blender generator exposes deterministic offline geometry math", () => {
   assert.equal(report.bottomAfterTransformM, 0);
 });
 
+test("Blender-style script execution resolves the bundled free3d package", () => {
+  const python = [
+    "import runpy, sys",
+    "sys.argv = ['scripts/blender_generate_bigimong.py', '--self-test']",
+    "runpy.run_path('scripts/blender_generate_bigimong.py', run_name='__main__')",
+  ].join("; ");
+  const result = spawnSync("python3", ["-I", "-c", python], {
+    cwd: root,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(JSON.parse(result.stdout).status, "SELF_TEST_OK");
+});
+
 test("avatar builders preserve distinct identities and a detachable summoning medallion", () => {
   const result = spawnSync("python3", [
     "scripts/blender_generate_bigimong.py",
