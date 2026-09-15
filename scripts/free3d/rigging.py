@@ -148,16 +148,20 @@ def _create_armature(character: Any, bone_specs: list[dict[str, Any]]) -> Any:
 
 
 def _bone_for_object(name: str, kind: str) -> str:
-    if "Head" in name or any(token in name for token in ("Eye", "Iris", "Pupil", "Catchlight", "Brow", "Hair", "Nose", "Cheek", "Smile", "Nostril", "Cap", "Muzzle")):
+    if "Head" in name or any(token in name for token in ("Eye", "Iris", "Pupil", "Catchlight", "Brow", "Hair", "Ear", "Horn", "Nose", "Cheek", "Smile", "Nostril", "Cap", "Muzzle", "Snout")):
         return "Head"
-    if "Jaw" in name or "Tooth" in name:
+    if "Jaw" in name or "Tooth" in name or "Mouth" in name:
         return "Jaw"
+    if any(token in name for token in ("SkinMark", "Dorsal", "Backpack", "ExplorerPack", "Vest", "Jacket", "PackRoll")):
+        return "Spine"
+    if "Finger" in name or "Palm" in name or "Thumb" in name:
+        return "Hand.L" if "Left" in name else "Hand.R"
     if "Left" in name:
-        if "Foot" in name or "Claw" in name or "Leg" in name or "Shin" in name:
+        if "Foot" in name or "Toe" in name or "Claw" in name or "Leg" in name or "Shin" in name:
             return "Foot.L" if "Foot" in name or "Claw" in name else "UpperLeg.L"
         return "Hand.L"
     if "Right" in name:
-        if "Foot" in name or "Claw" in name or "Leg" in name or "Shin" in name:
+        if "Foot" in name or "Toe" in name or "Claw" in name or "Leg" in name or "Shin" in name:
             return "Foot.R" if "Foot" in name or "Claw" in name else "UpperLeg.R"
         return "Hand.R"
     if "Tail" in name:

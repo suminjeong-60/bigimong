@@ -9,11 +9,31 @@ from pathlib import Path
 from typing import Any
 
 
-def _rgba(hex_color: str) -> tuple[int, int, int, int]:
+def _rgba(hex_color: str, alpha: int = 255) -> tuple[int, int, int, int]:
     value = hex_color.lstrip("#")
     if len(value) != 6:
         raise ValueError(f"expected #RRGGBB color, received {hex_color}")
-    return int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16), 255
+    return int(value[0:2], 16), int(value[2:4], 16), int(value[4:6], 16), alpha
+
+
+def _roughness_alpha(key: str) -> int:
+    """Encode semantic surface roughness without adding a second mobile texture."""
+    normalized = key.lower()
+    if normalized.startswith("medallion"):
+        roughness = 0.28
+    elif normalized.startswith("hair"):
+        roughness = 0.42
+    elif normalized.startswith(("clothing", "outerwear", "pack", "cap", "roll", "accessory")):
+        roughness = 0.72
+    elif normalized.startswith(("eye", "iris", "pupil", "catchlight")):
+        roughness = 0.24
+    elif normalized.startswith(("teeth", "claw")):
+        roughness = 0.42
+    elif normalized.startswith(("body", "dorsal", "underside", "nostril")):
+        roughness = 0.62
+    else:
+        roughness = 0.58
+    return round(roughness * 255.0)
 
 
 def _png_chunk(kind: bytes, payload: bytes) -> bytes:
@@ -28,7 +48,7 @@ def write_palette_atlas(path: Path, palette: dict[str, str], size: int = 1024) -
     if not keys:
         raise ValueError("palette cannot be empty")
     rows = bytearray()
-    colors = [_rgba(palette[key]) for key in keys]
+    colors = [_rgba(palette[key], _roughness_alpha(key)) for key in keys]
     for _y in range(size):
         rows.append(0)
         for x_value in range(size):
@@ -60,7 +80,7 @@ def create_atlas_material(name: str, palette: dict[str, str], atlas_path: Path) 
     texture.interpolation = "Closest"
     links.new(texture.outputs["Color"], shader.inputs["Base Color"])
     if "Roughness" in shader.inputs:
-        shader.inputs["Roughness"].default_value = 0.48
+        links.new(texture.outputs["Alpha"], shader.inputs["Roughness"])
     if "Specular IOR Level" in shader.inputs:
         shader.inputs["Specular IOR Level"].default_value = 0.3
     elif "Specular" in shader.inputs:

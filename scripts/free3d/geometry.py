@@ -207,6 +207,51 @@ def closed_tube_faces(ring_count: int, segments: int) -> list[tuple[int, ...]]:
     return faces
 
 
+def closed_fin_faces() -> list[tuple[int, ...]]:
+    """Return the five watertight faces of a triangular dorsal-fin prism."""
+    return [
+        (0, 2, 1),
+        (3, 4, 5),
+        (0, 1, 4, 3),
+        (1, 2, 5, 4),
+        (2, 0, 3, 5),
+    ]
+
+
+def create_fin_mesh(
+    name: str,
+    collection: Any,
+    *,
+    location: tuple[float, float, float],
+    width: float,
+    depth: float,
+    height: float,
+) -> Any:
+    """Build a closed low-poly triangular fin for dorsal silhouette detail."""
+    import bpy  # type: ignore
+
+    if min(width, depth, height) <= 0.0:
+        raise ValueError("fin dimensions must be positive")
+    half_width = width * 0.5
+    half_depth = depth * 0.5
+    vertices = [
+        (-half_width, -half_depth, 0.0),
+        (half_width, -half_depth, 0.0),
+        (0.0, -half_depth, height),
+        (-half_width, half_depth, 0.0),
+        (half_width, half_depth, 0.0),
+        (0.0, half_depth, height),
+    ]
+    mesh = bpy.data.meshes.new(f"{name}_Mesh")
+    mesh.from_pydata(vertices, [], closed_fin_faces())
+    mesh.update()
+    obj = bpy.data.objects.new(name, mesh)
+    _link_object(collection, obj)
+    obj.location = location
+    smooth_mesh(obj)
+    return obj
+
+
 def curve_to_mesh(obj: Any) -> Any:
     import bpy  # type: ignore
 

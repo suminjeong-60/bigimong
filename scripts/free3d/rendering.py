@@ -20,8 +20,11 @@ def rendering_contract() -> dict[str, Any]:
         "reviewAngles": list(REVIEW_ANGLES),
         "animationPreviews": list(ANIMATION_PREVIEWS),
         "renderResolution": list(RENDER_RESOLUTION),
-        "transparentFilm": True,
+        "transparentFilm": False,
         "cameraType": "ORTHO",
+        "reviewStyle": "neutral_studio_v2",
+        "contactShadows": True,
+        "heroScaleGuide": False,
     }
 
 
@@ -54,14 +57,14 @@ def _ensure_studio(bpy: Any) -> tuple[Any, Any]:
         bpy.ops.mesh.primitive_plane_add(size=8.0, location=(0.0, 0.0, -0.006))
         ground = bpy.context.object
         ground.name = "BigimongReviewGround"
-        ground.data.materials.append(_material(bpy, "ReviewGroundMaterial", (0.32, 0.37, 0.43, 1.0)))
+        ground.data.materials.append(_material(bpy, "ReviewGroundMaterial", (0.12, 0.15, 0.19, 1.0)))
 
     lights = (
-        ("BigimongKey", "AREA", (-3.0, -4.0, 5.0), 950.0, 4.0),
-        ("BigimongFill", "AREA", (3.0, -2.0, 3.0), 600.0, 3.0),
-        ("BigimongRim", "AREA", (0.0, 3.0, 4.5), 850.0, 3.0),
+        ("BigimongKey", "AREA", (-3.0, -4.0, 5.0), 720.0, 4.0, (1.0, 0.86, 0.72)),
+        ("BigimongFill", "AREA", (3.0, -2.0, 3.0), 360.0, 3.0, (0.66, 0.80, 1.0)),
+        ("BigimongRim", "AREA", (0.0, 3.0, 4.5), 780.0, 3.0, (0.76, 0.88, 1.0)),
     )
-    for name, kind, location, energy, size in lights:
+    for name, kind, location, energy, size, color in lights:
         light = bpy.data.objects.get(name)
         if light is None:
             data = bpy.data.lights.new(f"{name}Data", kind)
@@ -69,8 +72,13 @@ def _ensure_studio(bpy: Any) -> tuple[Any, Any]:
             scene.collection.objects.link(light)
         light.location = location
         light.data.energy = energy
+        light.data.color = color
         light.data.shape = "DISK"
         light.data.size = size
+        if hasattr(light.data, "use_shadow"):
+            light.data.use_shadow = True
+        if hasattr(light.data, "use_contact_shadow"):
+            light.data.use_contact_shadow = True
         direction = (ground.location - light.location).to_track_quat("-Z", "Y")
         light.rotation_euler = direction.to_euler()
 
@@ -79,7 +87,7 @@ def _ensure_studio(bpy: Any) -> tuple[Any, Any]:
         bpy.ops.mesh.primitive_cube_add(size=1.0)
         marker = bpy.context.object
         marker.name = "BigimongScaleMarker"
-        marker.data.materials.append(_material(bpy, "ReviewMarkerMaterial", (0.15, 0.7, 0.85, 1.0)))
+        marker.data.materials.append(_material(bpy, "ReviewMarkerMaterial", (0.08, 0.11, 0.15, 1.0)))
     return camera, marker
 
 
@@ -87,16 +95,24 @@ def _configure_scene(bpy: Any) -> None:
     scene = bpy.context.scene
     available = {item.identifier for item in scene.render.bl_rna.properties["engine"].enum_items}
     scene.render.engine = "BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in available else "BLENDER_EEVEE"
-    scene.render.film_transparent = True
+    scene.render.film_transparent = False
     scene.render.image_settings.file_format = "PNG"
     scene.render.image_settings.color_mode = "RGBA"
     scene.render.resolution_percentage = 100
     scene.render.resolution_x, scene.render.resolution_y = RENDER_RESOLUTION
     scene.render.image_settings.color_depth = "8"
-    scene.world.color = (0.055, 0.075, 0.11)
+    scene.world.color = (0.035, 0.05, 0.075)
+    if hasattr(scene, "eevee"):
+        scene.eevee.use_gtao = True
+        scene.eevee.gtao_distance = 3.0
+        scene.eevee.gtao_factor = 1.25
     if hasattr(scene, "view_settings"):
-        scene.view_settings.view_transform = "Standard"
-        scene.view_settings.look = "Medium High Contrast"
+        try:
+            scene.view_settings.view_transform = "AgX"
+            scene.view_settings.look = "AgX - Medium High Contrast"
+        except (TypeError, ValueError):
+            scene.view_settings.view_transform = "Standard"
+            scene.view_settings.look = "Medium High Contrast"
 
 
 def _aim_camera(camera: Any, target: tuple[float, float, float], position: tuple[float, float, float], ortho_scale: float) -> None:
@@ -172,7 +188,7 @@ def render_character_review(character: Any, rig: Any, output_dir: Path) -> list[
     distance = max(height, width, depth) * 3.2
     ortho = max(height * 1.24, width * 1.65, depth * 1.25)
     marker.dimensions = (max(height * 0.018, 0.01), max(height * 0.018, 0.01), height)
-    marker.location = (bounds_max[0] + max(height * 0.11, 0.04), 0.0, height * 0.5)
+    marker.location = (bounds_max[0] + max(height * 0.18, 0.05), center[1], bounds_min[2] + height * 0.5)
     bpy.context.view_layer.update()
     positions = {
         "front": (center[0], center[1] - distance, center[2]),
@@ -187,6 +203,7 @@ def render_character_review(character: Any, rig: Any, output_dir: Path) -> list[
     scene.frame_set(1)
     directions = []
     for name in REVIEW_ANGLES:
+        marker.hide_render = name == "three_quarter"
         _aim_camera(camera, center, positions[name], ortho)
         path = output_dir / f"{name}.png"
         scene.render.filepath = str(path)
@@ -195,6 +212,7 @@ def render_character_review(character: Any, rig: Any, output_dir: Path) -> list[
 
     previews = []
     scene.render.resolution_x = scene.render.resolution_y = 512
+    marker.hide_render = True
     _aim_camera(camera, center, positions["three_quarter"], ortho)
     for name in ANIMATION_PREVIEWS:
         rig.armature.animation_data.action = rig.action_blocks[name]

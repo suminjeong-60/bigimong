@@ -44,6 +44,7 @@ class AssetBuildResult:
     deform_bones: int
     control_bones: int
     required_parts: dict[str, bool]
+    detail_parts: dict[str, bool]
 
 
 def self_test() -> int:
@@ -193,6 +194,7 @@ def build_asset(bpy: Any, job: dict[str, Any], defaults: dict[str, Any], output_
         deform_bones=validation.deform_bones,
         control_bones=validation.control_bones,
         required_parts=validation.required_parts,
+        detail_parts=validation.detail_parts,
     )
 
 
@@ -221,6 +223,7 @@ def validation_summary(results: Sequence[Any]) -> dict[str, Any]:
                     "targetHeightErrorPct": result.target_height_error_pct,
                 },
                 "missingParts": [name for name, present in result.required_parts.items() if not present],
+                "missingDetails": [name for name, present in result.detail_parts.items() if not present],
             }
             for result in results
             if not result.valid

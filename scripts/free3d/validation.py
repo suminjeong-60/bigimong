@@ -4,11 +4,20 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from math import isfinite
+import re
 from typing import Any
 
 from free3d import REQUIRED_ACTIONS
 from free3d.geometry import descendants, world_bounds
 from free3d.rigging import COMMON_REQUIRED_BONES, MAX_CONTROL_BONES, MAX_DEFORM_BONES
+
+
+BLENDER_NUMERIC_SUFFIX = re.compile(r"\.\d{3}$")
+
+
+def logical_object_name(name: str) -> str:
+    """Strip only Blender's globally-unique numeric suffix from a scoped object name."""
+    return BLENDER_NUMERIC_SUFFIX.sub("", name)
 
 
 @dataclass
@@ -23,6 +32,7 @@ class ValidationReport:
     target_height_error_pct: float
     required_actions: list[str]
     required_parts: dict[str, bool]
+    detail_parts: dict[str, bool]
     warnings: list[str]
     errors: list[str]
 
@@ -151,11 +161,17 @@ def validate_character(character: Any, rig: Any, job: dict[str, Any], defaults: 
         if _has_open_boundary(obj):
             errors.append(f"open skin boundary: {obj.name}")
 
-    known_names = set(character.metadata.get("named_parts", [])) | {obj.name for obj in objects}
+    known_names = set(character.metadata.get("named_parts", [])) | {logical_object_name(obj.name) for obj in objects}
     required_parts = {name: name in known_names for name in job["requiredParts"]}
     for name, present in required_parts.items():
         if not present:
             errors.append(f"required part is missing: {name}")
+
+    object_names = {logical_object_name(obj.name) for obj in objects}
+    detail_parts = {name: name in object_names for name in job.get("detailParts", [])}
+    for name, present in detail_parts.items():
+        if not present:
+            errors.append(f"required polish detail is missing: {name}")
 
     minimum = int(defaults["targetTrianglesMin"])
     maximum = int(defaults["targetTrianglesMax"])
@@ -175,6 +191,7 @@ def validate_character(character: Any, rig: Any, job: dict[str, Any], defaults: 
         target_height_error_pct=target_height_error_pct,
         required_actions=list(rig.actions),
         required_parts=required_parts,
+        detail_parts=detail_parts,
         warnings=warnings,
         errors=errors,
     )

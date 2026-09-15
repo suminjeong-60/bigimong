@@ -62,6 +62,24 @@
         "Foot_R",
         "Medallion"
       ],
+      "detailParts": [
+        "EarLeft",
+        "EarRight",
+        "EyelidLeft",
+        "EyelidRight",
+        "PalmLeft",
+        "PalmRight",
+        "ThumbLeft",
+        "ThumbRight",
+        "TopCollar",
+        "TopHem",
+        "ShortsWaistband",
+        "MedallionInset",
+        "HairCrownShell",
+        "HairSweptClump01",
+        "HairSweptClump02",
+        "HairSweptClump03"
+      ],
       "inferredRear": true,
       "outputStem": "Avatar_Masculine"
     },
@@ -102,6 +120,24 @@
         "Foot_R",
         "Medallion"
       ],
+      "detailParts": [
+        "EarLeft",
+        "EarRight",
+        "EyelidLeft",
+        "EyelidRight",
+        "PalmLeft",
+        "PalmRight",
+        "ThumbLeft",
+        "ThumbRight",
+        "TopCollar",
+        "TopHem",
+        "ShortsWaistband",
+        "MedallionInset",
+        "HairBobShell",
+        "HairFringeClump",
+        "HairCurlLeft",
+        "HairCurlRight"
+      ],
       "inferredRear": true,
       "outputStem": "Avatar_Feminine"
     },
@@ -140,6 +176,20 @@
         "Leg_R",
         "Tail",
         "ExplorerCap"
+      ],
+      "detailParts": [
+        "UpperMuzzle",
+        "BrowRidgeLeft",
+        "BrowRidgeRight",
+        "CheekPlateLeft",
+        "CheekPlateRight",
+        "DorsalSpine01",
+        "DorsalSpine02",
+        "DorsalSpine03",
+        "FingerClawLeft01",
+        "FingerClawRight01",
+        "CapBand",
+        "CapBadge"
       ],
       "inferredRear": true,
       "outputStem": "Bigimong_01_Baby"
@@ -182,6 +232,22 @@
         "ExplorerVest",
         "ExplorerCap",
         "Backpack"
+      ],
+      "detailParts": [
+        "UpperMuzzle",
+        "BrowRidgeLeft",
+        "BrowRidgeRight",
+        "CheekPlateLeft",
+        "CheekPlateRight",
+        "DorsalSpine01",
+        "DorsalSpine02",
+        "DorsalSpine03",
+        "FingerClawLeft01",
+        "FingerClawRight01",
+        "VestCollar",
+        "BackpackFlap",
+        "BackpackStrapLeft",
+        "BackpackStrapRight"
       ],
       "inferredRear": true,
       "outputStem": "Bigimong_01_Teen"
@@ -226,6 +292,22 @@
         "ExplorerCap",
         "Backpack",
         "RolledMat"
+      ],
+      "detailParts": [
+        "UpperMuzzle",
+        "BrowRidgeLeft",
+        "BrowRidgeRight",
+        "CheekPlateLeft",
+        "CheekPlateRight",
+        "DorsalSpine01",
+        "DorsalSpine02",
+        "DorsalSpine03",
+        "FingerClawLeft01",
+        "FingerClawRight01",
+        "JacketCollar",
+        "JacketBelt",
+        "BackpackFlap",
+        "PackRollStrap"
       ],
       "inferredRear": true,
       "outputStem": "Bigimong_01_Adult"

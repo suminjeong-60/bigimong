@@ -97,6 +97,9 @@ export function validateFree3dManifest(manifest, { sourceExists, hashObject } = 
     if (!job?.bodyRatios || Object.keys(job.bodyRatios).length < 5) errors.push(`${label}: bodyRatios are incomplete`);
     if (!job?.palette || Object.keys(job.palette).length < 5) errors.push(`${label}: palette is incomplete`);
     if (!Array.isArray(job?.requiredParts) || job.requiredParts.length === 0) errors.push(`${label}: requiredParts is empty`);
+    if (!Array.isArray(job?.detailParts) || job.detailParts.length < 10) {
+      errors.push(`${label}: detailParts must contain at least ten modeled details`);
+    }
     if (job?.inferredRear !== true) errors.push(`${label}: inferredRear must be true for the single-view source`);
     if (job?.outputStem !== job?.resourceName) errors.push(`${label}: outputStem must equal resourceName`);
     if (job?.id?.startsWith("avatar_") && (!Array.isArray(job.cropTopLeft) || job.cropTopLeft.length !== 4)) {

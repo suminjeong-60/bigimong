@@ -24,6 +24,12 @@ export function validateFree3dReport(report, { root = process.cwd() } = {}) {
   if (JSON.stringify(ids) !== JSON.stringify(APPROVED_IDS)) errors.push("report model sequence mismatch");
   for (const model of report.models ?? []) {
     if (model.valid !== true) errors.push(`${model.id}: validation failed`);
+    const detailParts = model.detail_parts && typeof model.detail_parts === "object"
+      ? Object.entries(model.detail_parts)
+      : [];
+    const missingDetails = detailParts.filter(([, present]) => present !== true).map(([name]) => name);
+    if (detailParts.length === 0) errors.push(`${model.id}: polish detail report is missing`);
+    if (missingDetails.length) errors.push(`${model.id}: missing polish details ${missingDetails.join(", ")}`);
     for (const [kind, pathValue] of Object.entries({ fbx: model.fbx_path, glb: model.glb_path, atlas: model.atlas_path })) {
       const path = isAbsolute(pathValue) ? pathValue : resolve(root, pathValue);
       if (!existsSync(path)) {

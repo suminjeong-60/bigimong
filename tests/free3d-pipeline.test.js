@@ -50,6 +50,59 @@ test("free 3D validator rejects any paid provider or enabled billing", () => {
   }
 });
 
+test("free 3D validator rejects a pilot job without required polish details", () => {
+  const directory = mkdtempSync(join(tmpdir(), "bigimong-free3d-polish-"));
+  const file = join(directory, "missing-detail-parts.json");
+  const manifest = JSON.parse(readFileSync(new URL("../art/free3d/v0.17-pilot.json", import.meta.url), "utf8"));
+  delete manifest.jobs[0].detailParts;
+  writeFileSync(file, JSON.stringify(manifest));
+
+  try {
+    const result = spawnSync(process.execPath, ["scripts/validate-free3d-manifest.mjs", file], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /avatar_male: detailParts/);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
+test("free 3D report rejects a model with an unmodeled polish detail", async () => {
+  const directory = mkdtempSync(join(tmpdir(), "bigimong-free3d-report-polish-"));
+  const artifact = join(directory, "artifact.bin");
+  writeFileSync(artifact, "x");
+  const digest = "2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881";
+  const model = (id) => ({
+    id,
+    valid: true,
+    fbx_path: artifact,
+    glb_path: artifact,
+    atlas_path: artifact,
+    output_sha256: { fbx: digest, glb: digest, atlas: digest },
+    render_paths: Array(9).fill(artifact),
+    detail_parts: { UpperMuzzle: true },
+  });
+  const report = {
+    valid: true,
+    generator: "blender-python",
+    pilotIndex: artifact,
+    models: pilotIds.map(model),
+  };
+  report.models[0].detail_parts.UpperMuzzle = false;
+
+  try {
+    const { validateFree3dReport } = await import("../scripts/validate-free3d-report.mjs");
+    assert.throws(
+      () => validateFree3dReport(report, { root: directory }),
+      /avatar_male: missing polish details UpperMuzzle/,
+    );
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});
+
 test("Blender generator exposes deterministic offline geometry math", () => {
   const result = spawnSync("python3", ["scripts/blender_generate_bigimong.py", "--self-test"], {
     cwd: root,
@@ -158,6 +211,73 @@ print(json.dumps({
   });
 });
 
+test("closed dorsal-fin topology leaves no boundary edges", () => {
+  const python = `
+import json, sys
+from collections import Counter
+sys.path.insert(0, "scripts")
+import free3d.geometry as geometry
+faces = getattr(geometry, "closed_fin_faces", lambda: [])()
+edges = Counter()
+for face in faces:
+    for index, first in enumerate(face):
+        second = face[(index + 1) % len(face)]
+        edges[tuple(sorted((first, second)))] += 1
+print(json.dumps({
+    "faceCount": len(faces),
+    "boundaryEdges": sum(count != 2 for count in edges.values()),
+}))
+`;
+  const result = spawnSync("python3", ["-I", "-c", python], {
+    cwd: root,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    faceCount: 5,
+    boundaryEdges: 0,
+  });
+});
+
+test("single texture atlas carries material-specific roughness in alpha", () => {
+  const python = `
+import json, struct, sys, tempfile, zlib
+from pathlib import Path
+sys.path.insert(0, "scripts")
+from free3d.materials import write_palette_atlas
+
+with tempfile.TemporaryDirectory() as directory:
+    path = Path(directory) / "atlas.png"
+    write_palette_atlas(path, {
+        "skin": "#F4B08E",
+        "hair": "#45251E",
+        "clothing": "#34363D",
+        "medallion": "#F4B72C",
+    })
+    payload = path.read_bytes()
+    offset = 8
+    idat = bytearray()
+    while offset < len(payload):
+        length = struct.unpack(">I", payload[offset:offset + 4])[0]
+        kind = payload[offset + 4:offset + 8]
+        chunk = payload[offset + 8:offset + 8 + length]
+        if kind == b"IDAT":
+            idat.extend(chunk)
+        offset += 12 + length
+    row = zlib.decompress(bytes(idat))[:1 + 1024 * 4]
+    samples = [row[1 + x * 4 + 3] for x in (128, 384, 640, 896)]
+    print(json.dumps(samples))
+`;
+  const result = spawnSync("python3", ["-I", "-c", python], {
+    cwd: root,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [148, 107, 184, 71]);
+});
+
 test("Blender-style script execution resolves the bundled free3d package", () => {
   const python = [
     "import runpy, sys",
@@ -212,6 +332,7 @@ result = AssetBuildResult(
     origin_error_m=0.0,
     target_height_error_pct=0.0,
     required_parts={"Head": True, "Hair": False},
+    detail_parts={"EarLeft": True},
 )
 print(json.dumps(validation_summary([result]), sort_keys=True))
 `;
@@ -235,9 +356,69 @@ print(json.dumps(validation_summary([result]), sort_keys=True))
         originErrorM: 0,
         targetHeightErrorPct: 0,
       },
+      missingDetails: [],
       missingParts: ["Hair"],
     }],
   });
+});
+
+test("invalid model summary exposes missing modeled polish details", () => {
+  const python = `
+import json, sys
+from types import SimpleNamespace as NS
+sys.path.insert(0, "scripts")
+from blender_generate_bigimong import validation_summary
+result = NS(
+    id="tyrannosaurus_adult",
+    errors=["required polish detail is missing: JacketBelt"],
+    warnings=[],
+    triangle_count=28000,
+    materials=1,
+    texture_size=1024,
+    deform_bones=20,
+    control_bones=4,
+    origin_error_m=0.0,
+    target_height_error_pct=0.0,
+    required_parts={"Head": True},
+    detail_parts={"JacketCollar": True, "JacketBelt": False},
+    valid=False,
+)
+print(json.dumps(validation_summary([result]), sort_keys=True))
+`;
+  const result = spawnSync("python3", ["-I", "-c", python], {
+    cwd: root,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout).invalidModels[0].missingDetails, ["JacketBelt"]);
+});
+
+test("Blender numeric suffixes preserve stable logical polish part names", () => {
+  const python = `
+import json, sys
+sys.path.insert(0, "scripts")
+import free3d.validation as validation
+normalize = getattr(validation, "logical_object_name", lambda value: value)
+print(json.dumps([
+    normalize("EarLeft"),
+    normalize("EarLeft.001"),
+    normalize("DorsalSpine01.004"),
+    normalize("Pack.Roll"),
+]))
+`;
+  const result = spawnSync("python3", ["-I", "-c", python], {
+    cwd: root,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), [
+    "EarLeft",
+    "EarLeft",
+    "DorsalSpine01",
+    "Pack.Roll",
+  ]);
 });
 
 test("avatar builders preserve distinct identities and a detachable summoning medallion", () => {
@@ -254,6 +435,19 @@ test("avatar builders preserve distinct identities and a detachable summoning me
   assert.notEqual(report.profiles.avatar_male, report.profiles.avatar_female);
   assert.equal(report.detachableMedallion, true);
   assert.equal(report.stockPrimitiveOperators, false);
+  assert.deepEqual(report.hairConstruction, {
+    avatar_male: "layered_swept_clumps",
+    avatar_female: "layered_bob_clumps",
+  });
+  for (const id of report.ids) {
+    for (const detail of [
+      "EarLeft", "EarRight", "EyelidLeft", "EyelidRight",
+      "PalmLeft", "PalmRight", "ThumbLeft", "ThumbRight",
+      "TopCollar", "TopHem", "ShortsWaistband", "MedallionInset",
+    ]) {
+      assert.ok(report.polishParts[id].includes(detail), `${id} missing polish contract ${detail}`);
+    }
+  }
   for (const part of [
     "Head", "EyeWhiteLeft", "EyeWhiteRight", "IrisLeft", "IrisRight",
     "Hair", "Body", "HandLeft", "HandRight", "FootLeft", "FootRight",
@@ -280,6 +474,19 @@ test("Tyrannosaurus stages use independent proportions and wardrobe", () => {
   assert.ok(report.wardrobe.tyrannosaurus_teen.includes("ExplorerVest"));
   assert.ok(report.wardrobe.tyrannosaurus_adult.includes("PackRoll"));
   assert.equal(report.uniformStageScaling, false);
+  assert.equal(report.facialConstruction, "articulated_upper_muzzle_and_lower_jaw");
+  assert.equal(report.surfaceDetail, "staged_dorsal_spines_and_markings");
+  assert.equal(new Set(Object.values(report.expressions)).size, 3);
+  for (const id of report.ids) {
+    for (const detail of [
+      "UpperMuzzle", "BrowRidgeLeft", "BrowRidgeRight",
+      "CheekPlateLeft", "CheekPlateRight",
+      "DorsalSpine01", "DorsalSpine02", "DorsalSpine03",
+      "FingerClawLeft01", "FingerClawRight01",
+    ]) {
+      assert.ok(report.polishParts[id].includes(detail), `${id} missing polish contract ${detail}`);
+    }
+  }
   for (const part of ["Head", "Jaw", "Tail", "EyeWhiteLeft", "EyeWhiteRight", "Teeth"]) {
     assert.ok(report.namedParts.includes(part), `missing Tyrannosaurus part ${part}`);
   }
@@ -320,7 +527,10 @@ test("asset delivery enforces hard budgets and five review angles", () => {
   assert.deepEqual(report.reviewAngles, ["front", "left", "rear", "right", "three_quarter"]);
   assert.deepEqual(report.animationPreviews, ["Idle", "Summon", "Attack"]);
   assert.deepEqual(report.renderResolution, [1024, 1024]);
-  assert.equal(report.transparentFilm, true);
+  assert.equal(report.transparentFilm, false);
+  assert.equal(report.reviewStyle, "neutral_studio_v2");
+  assert.equal(report.contactShadows, true);
+  assert.equal(report.heroScaleGuide, false);
   assert.deepEqual(report.hardLimits, {
     triangles: 30000,
     materials: 4,
