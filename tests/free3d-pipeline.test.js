@@ -392,9 +392,9 @@ def png(pixels):
 def aligned(payload):
     return payload + b"\\x00" * ((4 - len(payload) % 4) % 4)
 
-def write_glb(path, pbr):
+def write_glb(path, pbr, *, duplicate_roughness=False, declared_length=None):
     base = png([(220, 60, 50), (245, 190, 130)])
-    roughness = png([(0, 71, 0), (0, 184, 0)])
+    roughness = base if duplicate_roughness else png([(0, 71, 0), (0, 184, 0)])
     first = aligned(base)
     binary = first + aligned(roughness)
     document = {
@@ -405,7 +405,7 @@ def write_glb(path, pbr):
             {"mimeType": "image/png", "bufferView": 0},
             {"mimeType": "image/png", "bufferView": 1},
         ],
-        "buffers": [{"byteLength": len(binary)}],
+        "buffers": [{"byteLength": len(binary) if declared_length is None else declared_length}],
         "bufferViews": [
             {"buffer": 0, "byteOffset": 0, "byteLength": len(base)},
             {"buffer": 0, "byteOffset": len(first), "byteLength": len(roughness)},
@@ -423,9 +423,18 @@ def write_glb(path, pbr):
 with tempfile.TemporaryDirectory() as directory:
     good = Path(directory) / "good.glb"
     bad = Path(directory) / "bad.glb"
+    duplicate = Path(directory) / "duplicate.glb"
+    bad_buffer = Path(directory) / "bad-buffer.glb"
     write_glb(good, {"baseColorTexture": {"index": 0}, "metallicRoughnessTexture": {"index": 1}})
     write_glb(bad, {"baseColorTexture": {"index": 0}, "metallicRoughnessTexture": {}})
-    print(json.dumps({"good": inspect_glb_surface(good), "bad": inspect_glb_surface(bad)}, sort_keys=True))
+    write_glb(duplicate, {"baseColorTexture": {"index": 0}, "metallicRoughnessTexture": {"index": 1}}, duplicate_roughness=True)
+    write_glb(bad_buffer, {"baseColorTexture": {"index": 0}, "metallicRoughnessTexture": {"index": 1}}, declared_length=1)
+    print(json.dumps({
+        "good": inspect_glb_surface(good),
+        "bad": inspect_glb_surface(bad),
+        "duplicate": inspect_glb_surface(duplicate),
+        "badBuffer": inspect_glb_surface(bad_buffer),
+    }, sort_keys=True))
 `;
   const result = spawnSync("python3", ["-I", "-c", python], {
     cwd: root,
@@ -447,6 +456,10 @@ with tempfile.TemporaryDirectory() as directory:
   });
   assert.equal(report.bad.valid, false);
   assert.ok(report.bad.errors.includes("roughness texture reference is invalid"));
+  assert.equal(report.duplicate.valid, false);
+  assert.ok(report.duplicate.errors.includes("roughness texture payload duplicates base color"));
+  assert.equal(report.badBuffer.valid, false);
+  assert.ok(report.badBuffer.errors.includes("GLB buffer byteLength is invalid"));
 });
 
 test("Blender-style script execution resolves the bundled free3d package", () => {
