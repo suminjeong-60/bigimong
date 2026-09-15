@@ -85,7 +85,7 @@ def _ensure_studio(bpy: Any) -> tuple[Any, Any]:
 
 def _configure_scene(bpy: Any) -> None:
     scene = bpy.context.scene
-    available = {item.identifier for item in scene.bl_rna.properties["render.engine"].enum_items}
+    available = {item.identifier for item in scene.render.bl_rna.properties["engine"].enum_items}
     scene.render.engine = "BLENDER_EEVEE_NEXT" if "BLENDER_EEVEE_NEXT" in available else "BLENDER_EEVEE"
     scene.render.film_transparent = True
     scene.render.image_settings.file_format = "PNG"

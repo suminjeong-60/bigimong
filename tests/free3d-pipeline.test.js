@@ -175,6 +175,38 @@ test("asset delivery enforces hard budgets and five review angles", () => {
   assert.ok(report.invalidFixture.errors.includes("triangle_count exceeds 30000"));
 });
 
+test("review renderer reads available engines from Blender render settings", () => {
+  const python = `
+import sys
+sys.path.insert(0, "scripts")
+from types import SimpleNamespace as NS
+from free3d.rendering import _configure_scene
+render = NS(
+    bl_rna=NS(properties={"engine": NS(enum_items=[NS(identifier="BLENDER_EEVEE")])}),
+    engine=None,
+    film_transparent=False,
+    image_settings=NS(file_format=None, color_mode=None, color_depth=None),
+    resolution_percentage=0,
+    resolution_x=0,
+    resolution_y=0,
+)
+scene = NS(
+    render=render,
+    world=NS(color=None),
+    view_settings=NS(view_transform=None, look=None),
+)
+_configure_scene(NS(context=NS(scene=scene)))
+print(render.engine)
+`;
+  const result = spawnSync("python3", ["-I", "-c", python], {
+    cwd: root,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout.trim(), "BLENDER_EEVEE");
+});
+
 test("free pilot workflow passes the offline-only policy validator", () => {
   const result = spawnSync(process.execPath, [
     "scripts/validate-free3d-workflow.mjs",
