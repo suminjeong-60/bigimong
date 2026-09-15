@@ -111,3 +111,25 @@ test("Tyrannosaurus stages use independent proportions and wardrobe", () => {
     assert.ok(report.namedParts.includes(part), `missing Tyrannosaurus part ${part}`);
   }
 });
+
+test("free Blender rigs expose runtime actions, limits, and attachment bones", () => {
+  const result = spawnSync("python3", [
+    "scripts/blender_generate_bigimong.py",
+    "--self-test-section",
+    "rigging",
+  ], { cwd: root, encoding: "utf8" });
+
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.status, "RIG_CONTRACT_OK");
+  assert.equal(report.maxDeformBones, 64);
+  assert.equal(report.maxControlBones, 16);
+  assert.deepEqual(Object.keys(report.actions), [
+    "Idle", "Summon", "Attack", "DodgeLeft", "DodgeRight", "Hit", "Knockout", "Victory",
+  ]);
+  assert.deepEqual(report.actions.Idle, { frames: [1, 90], loop: true });
+  for (const bone of ["Root", "Hips", "Head", "Jaw", "Hand.L", "Hand.R", "Foot.L", "Foot.R"]) {
+    assert.ok(report.requiredBones.includes(bone), `missing rig bone ${bone}`);
+  }
+  assert.ok(report.attachmentBones.includes("MedallionSocket"));
+});

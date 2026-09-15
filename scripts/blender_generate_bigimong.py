@@ -224,6 +224,11 @@ def main(argv: Sequence[str]) -> int:
 
         print(json.dumps(tyrannosaur_contract_report(), separators=(",", ":")))
         return 0
+    if args.self_test_section == "rigging":
+        from free3d.rigging import rig_contract_report
+
+        print(json.dumps(rig_contract_report(), separators=(",", ":")))
+        return 0
     return run_blender(args)
 
 
