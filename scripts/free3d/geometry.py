@@ -151,6 +151,7 @@ def create_curve_tube(
     curve.bevel_depth = radius
     curve.bevel_resolution = bevel_resolution
     curve.resolution_v = bevel_resolution
+    curve.use_fill_caps = True
     spline = curve.splines.new("BEZIER")
     spline.bezier_points.add(len(points) - 1)
     for point, coordinate in zip(spline.bezier_points, points):

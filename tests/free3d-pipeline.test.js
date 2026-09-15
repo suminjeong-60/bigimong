@@ -133,3 +133,29 @@ test("free Blender rigs expose runtime actions, limits, and attachment bones", (
   }
   assert.ok(report.attachmentBones.includes("MedallionSocket"));
 });
+
+test("asset delivery enforces hard budgets and five review angles", () => {
+  const result = spawnSync("python3", [
+    "scripts/blender_generate_bigimong.py",
+    "--self-test-section",
+    "delivery",
+  ], { cwd: root, encoding: "utf8" });
+
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.status, "DELIVERY_CONTRACT_OK");
+  assert.deepEqual(report.reviewAngles, ["front", "left", "rear", "right", "three_quarter"]);
+  assert.deepEqual(report.animationPreviews, ["Idle", "Summon", "Attack"]);
+  assert.deepEqual(report.renderResolution, [1024, 1024]);
+  assert.equal(report.transparentFilm, true);
+  assert.deepEqual(report.hardLimits, {
+    triangles: 30000,
+    materials: 4,
+    textureSize: 1024,
+    deformBones: 64,
+    controlBones: 16,
+    originErrorM: 0.001,
+  });
+  assert.equal(report.invalidFixture.valid, false);
+  assert.ok(report.invalidFixture.errors.includes("triangle_count exceeds 30000"));
+});

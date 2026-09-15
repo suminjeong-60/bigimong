@@ -32,6 +32,14 @@ class AssetBuildResult:
     valid: bool
     render_paths: list[str]
     errors: list[str]
+    source_git_blob_sha: str
+    output_sha256: dict[str, str]
+    origin_error_m: float
+    target_height_error_pct: float
+    texture_size: int
+    deform_bones: int
+    control_bones: int
+    required_parts: dict[str, bool]
 
 
 def self_test() -> int:
@@ -164,6 +172,18 @@ def build_asset(bpy: Any, job: dict[str, Any], defaults: dict[str, Any], output_
         valid=validation.valid,
         render_paths=render_paths,
         errors=list(validation.errors),
+        source_git_blob_sha=job["sourceGitBlobSha"],
+        output_sha256={
+            "fbx": sha256(fbx_path),
+            "glb": sha256(glb_path),
+            "atlas": sha256(output_dir / "textures" / f"{job['outputStem']}_Atlas.png"),
+        },
+        origin_error_m=validation.origin_error_m,
+        target_height_error_pct=validation.target_height_error_pct,
+        texture_size=validation.texture_size,
+        deform_bones=validation.deform_bones,
+        control_bones=validation.control_bones,
+        required_parts=validation.required_parts,
     )
 
 
@@ -192,6 +212,17 @@ def run_blender(args: argparse.Namespace) -> int:
         raise ValueError(f"unknown pilot id: {args.only}")
 
     results = [build_asset(bpy, job, manifest["defaults"], args.output_dir, args.render) for job in jobs]
+    pilot_index = None
+    if args.render and len(results) > 1:
+        from free3d.rendering import write_contact_sheet
+
+        three_quarter_paths = [
+            Path(path)
+            for result in results
+            for path in result.render_paths
+            if path.endswith("/three_quarter.png")
+        ]
+        pilot_index = write_contact_sheet(three_quarter_paths, args.output_dir / "renders" / "pilot_index.png")
     blend_path = args.output_dir / "bigimong-v017-review.blend"
     bpy.ops.wm.save_as_mainfile(filepath=str(blend_path))
     report_path = args.output_dir / "bigimong-v017-model-report.json"
@@ -202,7 +233,8 @@ def run_blender(args: argparse.Namespace) -> int:
         "deterministicSeed": manifest["deterministicSeed"],
         "manifestSha256": sha256(args.manifest),
         "blenderVersion": bpy.app.version_string,
-        "valid": len(results) == 5 and all(result.valid for result in results),
+        "valid": all(result.valid for result in results) and (len(results) == 5 or bool(args.only)),
+        "pilotIndex": str(pilot_index) if pilot_index else None,
         "models": [asdict(result) for result in results],
     }
     report_path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
@@ -228,6 +260,13 @@ def main(argv: Sequence[str]) -> int:
         from free3d.rigging import rig_contract_report
 
         print(json.dumps(rig_contract_report(), separators=(",", ":")))
+        return 0
+    if args.self_test_section == "delivery":
+        from free3d.rendering import rendering_contract
+        from free3d.validation import delivery_validation_contract
+
+        report = {"status": "DELIVERY_CONTRACT_OK", **rendering_contract(), **delivery_validation_contract()}
+        print(json.dumps(report, separators=(",", ":")))
         return 0
     return run_blender(args)
 

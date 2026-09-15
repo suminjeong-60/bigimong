@@ -234,7 +234,7 @@ def _build_shared(job: dict[str, Any], collection: Any, root: Any, texture_dir: 
             "atlas": atlas,
             "atlas_path": str(atlas_path),
             "palette_keys": keys,
-            "named_parts": list(AVATAR_NAMED_PARTS),
+            "named_parts": list(dict.fromkeys([*AVATAR_NAMED_PARTS, *job["requiredParts"]])),
             "profile": profile["profile"],
             "inferred_rear": True,
         },

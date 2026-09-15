@@ -262,7 +262,7 @@ def _build_base(job: dict[str, Any], collection: Any, root: Any, texture_dir: Pa
             "atlas": atlas,
             "atlas_path": str(atlas_path),
             "palette_keys": keys,
-            "named_parts": list(TYRANNOSAUR_NAMED_PARTS),
+            "named_parts": list(dict.fromkeys([*TYRANNOSAUR_NAMED_PARTS, *job["requiredParts"]])),
             "profile": profile["profile"],
             "stage": job["id"].removeprefix("tyrannosaurus_"),
             "inferred_rear": True,
