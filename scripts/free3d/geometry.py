@@ -181,16 +181,7 @@ def create_tapered_tube_mesh(
         for index in range(segments):
             angle = 2.0 * pi * index / segments
             vertices.append((center_x + radius_x * cos(angle), center_y, center_z + radius_z * sin(angle)))
-    faces: list[tuple[int, ...]] = []
-    for ring in range(len(centerline) - 1):
-        start = ring * segments
-        next_start = (ring + 1) * segments
-        for index in range(segments):
-            nxt = (index + 1) % segments
-            faces.append((start + index, start + nxt, next_start + nxt, next_start + index))
-    faces.append(tuple(reversed(tuple(range(segments)))))
-    end = (len(centerline) - 1) * segments
-    faces.append(tuple(end + index for index in range(segments)))
+    faces = closed_tube_faces(len(centerline), segments)
     mesh = bpy.data.meshes.new(f"{name}_Mesh")
     mesh.from_pydata(vertices, [], faces)
     mesh.update()
@@ -198,6 +189,22 @@ def create_tapered_tube_mesh(
     _link_object(collection, obj)
     smooth_mesh(obj)
     return obj
+
+
+def closed_tube_faces(ring_count: int, segments: int) -> list[tuple[int, ...]]:
+    if ring_count < 2 or segments < 3:
+        raise ValueError("closed tube needs two rings and at least three segments")
+    faces: list[tuple[int, ...]] = []
+    for ring in range(ring_count - 1):
+        start = ring * segments
+        next_start = (ring + 1) * segments
+        for index in range(segments):
+            nxt = (index + 1) % segments
+            faces.append((start + index, start + nxt, next_start + nxt, next_start + index))
+    faces.append(tuple(reversed(tuple(range(segments)))))
+    end = (ring_count - 1) * segments
+    faces.append(tuple(end + index for index in range(segments)))
+    return faces
 
 
 def curve_to_mesh(obj: Any) -> Any:
@@ -296,6 +303,29 @@ def world_bounds(objects: Iterable[Any]) -> tuple[tuple[float, float, float], tu
         tuple(min(point[axis] for point in points) for axis in range(3)),
         tuple(max(point[axis] for point in points) for axis in range(3)),
     )
+
+
+def normalize_character_transform(
+    root: Any,
+    target_height_m: float,
+    *,
+    bounds_fn: Any = world_bounds,
+    update_scene: Any,
+) -> float:
+    bounds_min, bounds_max = bounds_fn(descendants(root))
+    factor = uniform_scale(bounds_max[2] - bounds_min[2], target_height_m)
+    for child in root.children:
+        child.location *= factor
+        child.scale *= factor
+    update_scene()
+
+    scaled_min, _ = bounds_fn(descendants(root))
+    shift = bottom_offset(scaled_min[2])
+    for child in root.children:
+        child.location.z += shift
+    root.location.z = 0.0
+    update_scene()
+    return factor
 
 
 def place_origin_at_bottom(root: Any) -> float:

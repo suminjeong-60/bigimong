@@ -126,7 +126,7 @@ def export_character(bpy: Any, root: Any, fbx_path: Path, glb_path: Path) -> Non
 
 
 def build_asset(bpy: Any, job: dict[str, Any], defaults: dict[str, Any], output_dir: Path, render: bool) -> AssetBuildResult:
-    from free3d.geometry import descendants, place_origin_at_bottom, scale_to_height, world_bounds
+    from free3d.geometry import descendants, normalize_character_transform, world_bounds
     from free3d.rigging import rig_avatar, rig_tyrannosaur
     from free3d.validation import validate_character
 
@@ -146,8 +146,12 @@ def build_asset(bpy: Any, job: dict[str, Any], defaults: dict[str, Any], output_
         character = build_tyrannosaur(job, collection, root, output_dir / "textures")
         rig = rig_tyrannosaur(character)
 
-    scale_to_height(root, float(job["targetHeightM"]))
-    place_origin_at_bottom(root)
+    normalize_character_transform(
+        root,
+        float(job["targetHeightM"]),
+        bounds_fn=world_bounds,
+        update_scene=bpy.context.view_layer.update,
+    )
     validation = validate_character(character, rig, job, defaults)
     model_dir = output_dir / "models"
     model_dir.mkdir(parents=True, exist_ok=True)
@@ -209,7 +213,7 @@ def validation_summary(results: Sequence[Any]) -> dict[str, Any]:
                 "warnings": list(result.warnings),
                 "metrics": {
                     "triangleCount": result.triangle_count,
-                    "materialCount": result.material_count,
+                    "materialCount": result.materials,
                     "textureSize": result.texture_size,
                     "deformBones": result.deform_bones,
                     "controlBones": result.control_bones,

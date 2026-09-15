@@ -67,6 +67,97 @@ test("Blender generator exposes deterministic offline geometry math", () => {
   assert.equal(report.bottomAfterTransformM, 0);
 });
 
+test("character normalization synchronizes scale and bottom transforms", () => {
+  const python = `
+import json, sys
+sys.path.insert(0, "scripts")
+from free3d.geometry import normalize_character_transform
+
+class Vector:
+    def __init__(self, x=0.0, y=0.0, z=0.0):
+        self.x, self.y, self.z = x, y, z
+    def __imul__(self, value):
+        self.x *= value
+        self.y *= value
+        self.z *= value
+        return self
+
+class Node:
+    def __init__(self):
+        self.children = []
+        self.location = Vector()
+        self.scale = Vector(1.0, 1.0, 1.0)
+
+root = Node()
+child = Node()
+root.children.append(child)
+cached = {"min": -1.0, "max": 3.0, "updates": 0}
+
+def bounds(_objects):
+    return ((0.0, 0.0, cached["min"]), (0.0, 0.0, cached["max"]))
+
+def update_scene():
+    cached["min"] = child.location.z - child.scale.z
+    cached["max"] = child.location.z + 3.0 * child.scale.z
+    cached["updates"] += 1
+
+factor = normalize_character_transform(
+    root,
+    2.0,
+    bounds_fn=bounds,
+    update_scene=update_scene,
+)
+print(json.dumps({
+    "factor": factor,
+    "bottom": cached["min"],
+    "height": cached["max"] - cached["min"],
+    "updates": cached["updates"],
+}))
+`;
+  const result = spawnSync("python3", ["-I", "-c", python], {
+    cwd: root,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    factor: 0.5,
+    bottom: 0,
+    height: 2,
+    updates: 2,
+  });
+});
+
+test("closed tapered tube topology leaves no boundary edges", () => {
+  const python = `
+import json, sys
+from collections import Counter
+sys.path.insert(0, "scripts")
+from free3d.geometry import closed_tube_faces
+
+faces = closed_tube_faces(3, 28)
+edges = Counter()
+for face in faces:
+    for index, first in enumerate(face):
+        second = face[(index + 1) % len(face)]
+        edges[tuple(sorted((first, second)))] += 1
+print(json.dumps({
+    "faceCount": len(faces),
+    "boundaryEdges": sum(count != 2 for count in edges.values()),
+}))
+`;
+  const result = spawnSync("python3", ["-I", "-c", python], {
+    cwd: root,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.deepEqual(JSON.parse(result.stdout), {
+    faceCount: 58,
+    boundaryEdges: 0,
+  });
+});
+
 test("Blender-style script execution resolves the bundled free3d package", () => {
   const python = [
     "import runpy, sys",
@@ -97,15 +188,24 @@ test("Blender generator exposes invalid model reasons without Blender", () => {
   const python = `
 import json, sys
 sys.path.insert(0, "scripts")
-from types import SimpleNamespace as NS
-from blender_generate_bigimong import validation_summary
-result = NS(
+from blender_generate_bigimong import AssetBuildResult, validation_summary
+result = AssetBuildResult(
     id="avatar_male",
+    resource_name="Avatar_Masculine",
+    fbx_path="model.fbx",
+    glb_path="model.glb",
+    atlas_path="atlas.png",
+    bounds={"min": [0, 0, 0], "max": [1, 1, 2]},
+    materials=1,
+    bones=23,
+    actions=[],
     valid=False,
     errors=["triangle_count exceeds 30000"],
     warnings=["triangle_count 31000 is outside target range 18000..25000"],
     triangle_count=31000,
-    material_count=1,
+    render_paths=[],
+    source_git_blob_sha="source",
+    output_sha256={},
     texture_size=1024,
     deform_bones=19,
     control_bones=4,

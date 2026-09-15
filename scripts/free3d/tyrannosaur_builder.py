@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from free3d.geometry import CharacterBuild, create_curve_tube, create_ellipsoid_mesh, create_profile_mesh, create_tapered_tube_mesh
+from free3d.geometry import CharacterBuild, create_ellipsoid_mesh, create_profile_mesh, create_tapered_tube_mesh
 from free3d.materials import assign_palette_region, create_atlas_material, palette_index
 
 
@@ -208,12 +208,21 @@ def _build_base(job: dict[str, Any], collection: Any, root: Any, texture_dir: Pa
             rigid.append(claw)
 
         arm_z = profile["body_z"] + 0.23
-        arm = create_curve_tube(
-            f"Arm{side}", collection,
-            [(x_sign * profile["body"][0] * 0.72, -0.3, arm_z), (x_sign * profile["body"][0] * 0.86, -0.46, arm_z - 0.08), (x_sign * profile["body"][0] * 0.74, -0.55, arm_z - 0.13)],
-            radius=profile["body"][0] * 0.075,
-            resolution=3,
-            bevel_resolution=3,
+        arm_radius = profile["body"][0] * 0.075
+        arm = create_tapered_tube_mesh(
+            f"Arm{side}",
+            collection,
+            [
+                (x_sign * profile["body"][0] * 0.72, -0.3, arm_z),
+                (x_sign * profile["body"][0] * 0.86, -0.46, arm_z - 0.08),
+                (x_sign * profile["body"][0] * 0.74, -0.55, arm_z - 0.13),
+            ],
+            [
+                (arm_radius, arm_radius),
+                (arm_radius * 0.86, arm_radius * 0.86),
+                (arm_radius * 0.68, arm_radius * 0.68),
+            ],
+            segments=28,
         )
         _parent(arm, root)
         _color(arm, material, keys, "bodyHighlight")
