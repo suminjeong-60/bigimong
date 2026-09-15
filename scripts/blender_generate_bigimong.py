@@ -60,6 +60,7 @@ def parse_args(argv: Sequence[str]) -> argparse.Namespace:
     parser.add_argument("--only")
     parser.add_argument("--render", action="store_true")
     parser.add_argument("--self-test", action="store_true")
+    parser.add_argument("--self-test-section", choices=("avatars", "tyrannosaurs", "rigging", "delivery"))
     return parser.parse_args(forwarded_args(argv))
 
 
@@ -213,6 +214,11 @@ def main(argv: Sequence[str]) -> int:
     args = parse_args(argv)
     if args.self_test:
         return self_test()
+    if args.self_test_section == "avatars":
+        from free3d.avatar_builder import avatar_contract_report
+
+        print(json.dumps(avatar_contract_report(), separators=(",", ":")))
+        return 0
     return run_blender(args)
 
 

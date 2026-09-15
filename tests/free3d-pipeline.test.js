@@ -66,3 +66,26 @@ test("Blender generator exposes deterministic offline geometry math", () => {
   assert.equal(report.scaledHeightM, 2.1);
   assert.equal(report.bottomAfterTransformM, 0);
 });
+
+test("avatar builders preserve distinct identities and a detachable summoning medallion", () => {
+  const result = spawnSync("python3", [
+    "scripts/blender_generate_bigimong.py",
+    "--self-test-section",
+    "avatars",
+  ], { cwd: root, encoding: "utf8" });
+
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.status, "AVATAR_CONTRACT_OK");
+  assert.deepEqual(report.ids, ["avatar_male", "avatar_female"]);
+  assert.notEqual(report.profiles.avatar_male, report.profiles.avatar_female);
+  assert.equal(report.detachableMedallion, true);
+  assert.equal(report.stockPrimitiveOperators, false);
+  for (const part of [
+    "Head", "EyeWhiteLeft", "EyeWhiteRight", "IrisLeft", "IrisRight",
+    "Hair", "Body", "HandLeft", "HandRight", "FootLeft", "FootRight",
+    "NecklaceChain", "SummoningMedallion", "MedallionSocket",
+  ]) {
+    assert.ok(report.namedParts.includes(part), `missing avatar part ${part}`);
+  }
+});
