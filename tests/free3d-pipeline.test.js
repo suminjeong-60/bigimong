@@ -159,3 +159,35 @@ test("asset delivery enforces hard budgets and five review angles", () => {
   assert.equal(report.invalidFixture.valid, false);
   assert.ok(report.invalidFixture.errors.includes("triangle_count exceeds 30000"));
 });
+
+test("free pilot workflow passes the offline-only policy validator", () => {
+  const result = spawnSync(process.execPath, [
+    "scripts/validate-free3d-workflow.mjs",
+    ".github/workflows/build-free-3d-pilot.yml",
+  ], { cwd: root, encoding: "utf8" });
+
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.valid, true);
+  assert.equal(report.permissions, "contents: read");
+  assert.equal(report.paidServiceReferences, 0);
+  assert.equal(report.artifact, "Bigimong-Free3D-v0.17-pilot");
+  assert.equal(report.blenderGeneration, true);
+});
+
+test("free pilot workflow policy rejects credentials for a paid generator", () => {
+  const directory = mkdtempSync(join(tmpdir(), "bigimong-free3d-workflow-"));
+  const file = join(directory, "paid.yml");
+  writeFileSync(file, "permissions: contents: read\nenv:\n  TRIPO_API_KEY: paid\n");
+
+  try {
+    const result = spawnSync(process.execPath, ["scripts/validate-free3d-workflow.mjs", file], {
+      cwd: root,
+      encoding: "utf8",
+    });
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /paid generation|credential/i);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+});

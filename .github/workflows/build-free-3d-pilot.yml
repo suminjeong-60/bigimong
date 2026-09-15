@@ -1,0 +1,78 @@
+name: Build Bigimong Free 3D Pilot
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/v0.12-offline-beta
+    paths:
+      - art/free3d/**
+      - scripts/blender_generate_bigimong.py
+      - scripts/free3d/**
+      - scripts/validate-free3d-*.mjs
+      - tests/free3d-pipeline.test.js
+      - .github/workflows/build-free-3d-pilot.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: bigimong-free3d-v017-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Generate and validate five pilot models
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    steps:
+      - name: Check out source with reference history
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+
+      - name: Run repository regression tests
+        run: npm test
+
+      - name: Validate immutable references and free workflow policy
+        run: |
+          node scripts/validate-free3d-manifest.mjs art/free3d/v0.17-pilot.json
+          node scripts/validate-free3d-workflow.mjs .github/workflows/build-free-3d-pilot.yml
+
+      - name: Install the Ubuntu Blender package
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes blender
+          blender --version
+
+      - name: Generate, rig, validate, export, and render
+        run: |
+          blender --background --python scripts/blender_generate_bigimong.py -- \
+            --manifest art/free3d/v0.17-pilot.json \
+            --output-dir build/free3d-v017 \
+            --render
+
+      - name: Verify generated report and output hashes
+        run: node scripts/validate-free3d-report.mjs build/free3d-v017/bigimong-v017-model-report.json
+
+      - name: List review artifact tree
+        run: find build/free3d-v017 -maxdepth 4 -type f -print | sort
+
+      - name: Upload free 3D pilot review artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bigimong-Free3D-v0.17-pilot
+          path: |
+            build/free3d-v017/models/*.fbx
+            build/free3d-v017/models/*.glb
+            build/free3d-v017/textures/*.png
+            build/free3d-v017/renders/**/*.png
+            build/free3d-v017/bigimong-v017-review.blend
+            build/free3d-v017/bigimong-v017-model-report.json
+          if-no-files-found: error
+          retention-days: 14

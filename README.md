@@ -116,6 +116,23 @@ JSON의 `valid`가 `true`인지 확인하고, 내려받은 APK의 SHA-256이 `.s
 
 Unity 계정 비밀번호와 라이선스 본문은 저장소 파일, 이슈, 로그에 입력하지 않습니다. GitHub Actions Secrets에만 등록합니다.
 
+## 무료 Blender 3D 파일럿 만들기
+
+`.github/workflows/build-free-3d-pilot.yml`은 유료 모델 생성 서비스나 API 키를 전혀 사용하지 않고 공개 GitHub Actions 러너의 Blender 패키지만으로 v0.17 파일럿을 만듭니다. 대상은 남성 아바타, 여성 아바타, 빨간 티라노사우루스 아기·청소년·성체의 총 5종입니다. 각 모델은 별도 체형 프로필, 1024×1024 아틀라스, 골격, 8개 동작, FBX/GLB, 5방향 렌더와 애니메이션 미리보기를 가집니다.
+
+Blender가 설치된 컴퓨터에서는 저장소 루트에서 같은 결과를 재현할 수 있습니다.
+
+```bash
+node scripts/validate-free3d-manifest.mjs art/free3d/v0.17-pilot.json
+blender --background --python scripts/blender_generate_bigimong.py -- \
+  --manifest art/free3d/v0.17-pilot.json \
+  --output-dir build/free3d-v017 \
+  --render
+node scripts/validate-free3d-report.mjs build/free3d-v017/bigimong-v017-model-report.json
+```
+
+성공한 `Bigimong-Free3D-v0.17-pilot` artifact에는 모델당 FBX·GLB·아틀라스·5방향 렌더·Idle/Summon/Attack 미리보기·접촉 시트가 들어가고, 전체 파일럿 인덱스·검증 JSON·Blender 검토 장면도 포함됩니다. 생성된 파일은 코드 검사가 통과했다는 이유만으로 완성품으로 간주하지 않습니다. 실제 접촉 시트를 제공 원화와 대조해 사용자가 승인하기 전에는 Unity 리소스 폴더에 복사하지 않습니다.
+
 ## 다음 제작 단계
 
 1. Google Cloud 프로젝트와 ARCore Extensions를 연결해 `SharedAnchorProvider` 완성
