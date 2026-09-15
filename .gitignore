@@ -10,5 +10,12 @@
 *.iml
 .worktrees/
 
+# Reproducible v0.17 Blender/Unity outputs.
+build/free3d-v017/
+unity/BigimongAR/Assets/BigimongAR/Resources/GeneratedCharacters/*.prefab
+unity/BigimongAR/Assets/BigimongAR/Resources/GeneratedCharacters/*.controller
+unity/BigimongAR/Assets/BigimongAR/Resources/GeneratedCharacters/*.prefab.meta
+unity/BigimongAR/Assets/BigimongAR/Resources/GeneratedCharacters/*.controller.meta
+
 # User-supplied visual references stay private; never publish source images.
 docs/art-reference/*.png

@@ -49,3 +49,20 @@ test("free 3D validator rejects any paid provider or enabled billing", () => {
     rmSync(directory, { recursive: true, force: true });
   }
 });
+
+test("Blender generator exposes deterministic offline geometry math", () => {
+  const result = spawnSync("python3", ["scripts/blender_generate_bigimong.py", "--self-test"], {
+    cwd: root,
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, result.stderr);
+  const report = JSON.parse(result.stdout);
+  assert.equal(report.status, "SELF_TEST_OK");
+  assert.equal(report.generator, "blender-python");
+  assert.deepEqual(report.requiredActions, [
+    "Idle", "Summon", "Attack", "DodgeLeft", "DodgeRight", "Hit", "Knockout", "Victory",
+  ]);
+  assert.equal(report.scaledHeightM, 2.1);
+  assert.equal(report.bottomAfterTransformM, 0);
+});
