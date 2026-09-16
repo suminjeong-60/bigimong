@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - feature/v0.12-offline-beta
+      - feature/v0.19-3d-hatch-home
 
 permissions:
   contents: read

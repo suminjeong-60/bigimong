@@ -23,7 +23,13 @@ test("Unity build entry point creates the approved ARM64 debug APK", () => {
 test("GitHub Actions verifies source, builds Unity, and uploads the APK", () => {
   const workflow = read(".github/workflows/build-ar-debug-apk.yml");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.match(workflow, /push:\s+branches:\s+- feature\/v0\.12-offline-beta/s);
+  const pushBranches = workflow
+    .match(/push:\s+branches:\s+((?:\s+- [^\n]+\n?)+)/)?.[1]
+    .matchAll(/^\s+- (.+)$/gm);
+  const automaticBuildBranches = [...(pushBranches ?? [])].map((match) => match[1]);
+  assert.ok(automaticBuildBranches.includes("feature/v0.12-offline-beta"));
+  assert.ok(automaticBuildBranches.includes("feature/v0.19-3d-hatch-home"));
+  assert.ok(automaticBuildBranches.every((branch) => !branch.includes("*")));
   assert.match(workflow, /npm test/);
   assert.match(workflow, /game-ci\/unity-builder@v4/);
   assert.match(workflow, /buildMethod: Bigimong\.Editor\.BigimongAndroidBuild\.BuildDebugApk/);
