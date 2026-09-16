@@ -121,6 +121,20 @@ test("restart recovery behavior is registered in the executable Unity store chec
   assert.match(read("Editor/BigimongAndroidBuild.cs"), /HatchHomeStoreEditorChecks\.RunBehaviorChecks\(\)/);
 });
 
+// The registered C# check exercises real files; this portable gate prevents restoring an
+// overload that Unity 6000's player profile cannot compile before that check can execute.
+test("system hatch promotion uses Unity-compatible atomic replace semantics", () => {
+  const store = read("Scripts/HatchHomeStore.cs");
+  const adapter = store.split("private sealed class SystemHatchHomeFileSystem")[1] ?? "";
+  assert.doesNotMatch(adapter, /File\.Move\([^;\n]+,[^;\n]+,[^;\n]+\)/);
+  assert.match(adapter, /File\.Replace\(source, destination, null\)/);
+  assert.match(adapter, /File\.Move\(source, destination\)/);
+
+  const checks = read("Editor/HatchHomeStoreEditorChecks.cs");
+  const runBody = checks.match(/public static void RunBehaviorChecks\(\)\s*\{([\s\S]*?)\n\s*\}/)?.[1] ?? "";
+  assert.match(runBody, /SystemFileSystemPromotionOverwritesAndCreatesDestinations\(\)/);
+});
+
 test("hatch selection saves one equal-pool art id before playback", () => {
   const source = read("Scripts/HatchSelectionService.cs");
   assert.match(source, /Random\.Range\(1, 31\)/);

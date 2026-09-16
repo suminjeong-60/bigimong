@@ -25,6 +25,7 @@ namespace Bigimong.AR.EditorChecks
             RestartedStoreFailsClosedUntilNewestReplicaRecovers();
             CoordinatorInitialLoadRetriesNewestReplica();
             SystemFileSystemExistsPreservesProbeErrors();
+            SystemFileSystemPromotionOverwritesAndCreatesDestinations();
             RawPhaseProgressMismatchLosesToValidReplica();
             InvalidPhaseProgressCannotBeSavedAsOwnership();
             SaveRoundTripsAndCreatesFirstBackup();
@@ -565,6 +566,33 @@ namespace Bigimong.AR.EditorChecks
                 catch (ArgumentException) { invalidPropagated = true; }
                 Require(invalidPropagated,
                     "system adapter propagates an invalid/unexpected probe instead of treating it as missing");
+            }
+            finally { Directory.Delete(directory, true); }
+        }
+
+        private static void SystemFileSystemPromotionOverwritesAndCreatesDestinations()
+        {
+            var adapterType = typeof(HatchHomeStore).GetNestedType(
+                "SystemHatchHomeFileSystem", System.Reflection.BindingFlags.NonPublic);
+            var adapter = (IHatchHomeFileSystem)Activator.CreateInstance(adapterType, true);
+            var directory = Path.Combine(Path.GetTempPath(), "bigimong-hatch-promotion-" + Guid.NewGuid().ToString("N"));
+            var replacement = Path.Combine(directory, "replacement.tmp");
+            var existing = Path.Combine(directory, "existing.json");
+            var first = Path.Combine(directory, "first.tmp");
+            var missing = Path.Combine(directory, "missing.json");
+            Directory.CreateDirectory(directory);
+            File.WriteAllText(replacement, "replacement");
+            File.WriteAllText(existing, "existing");
+            File.WriteAllText(first, "first");
+            try
+            {
+                adapter.Move(replacement, existing, true);
+                Require(!File.Exists(replacement) && File.ReadAllText(existing) == "replacement",
+                    "system adapter atomically replaces an existing destination");
+
+                adapter.Move(first, missing, true);
+                Require(!File.Exists(first) && File.ReadAllText(missing) == "first",
+                    "system adapter moves into a previously missing destination");
             }
             finally { Directory.Delete(directory, true); }
         }

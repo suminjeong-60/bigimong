@@ -316,7 +316,16 @@ namespace Bigimong.AR
             public string ReadAllText(string path) => File.ReadAllText(path);
             public void WriteAllText(string path, string contents) => File.WriteAllText(path, contents);
             public void Copy(string source, string destination, bool overwrite) => File.Copy(source, destination, overwrite);
-            public void Move(string source, string destination, bool overwrite) => File.Move(source, destination, overwrite);
+            public void Move(string source, string destination, bool overwrite)
+            {
+                if (!overwrite || !File.Exists(destination))
+                {
+                    File.Move(source, destination);
+                    return;
+                }
+
+                File.Replace(source, destination, null);
+            }
             public void Delete(string path) => File.Delete(path);
         }
     }
