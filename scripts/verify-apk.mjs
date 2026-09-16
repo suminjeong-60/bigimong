@@ -6,8 +6,8 @@ import { pathToFileURL } from "node:url";
 
 export const EXPECTED_APK = Object.freeze({
   applicationId: "com.bigimong.app",
-  versionName: "0.16.0",
-  versionCode: "16",
+  versionName: "0.19.0",
+  versionCode: "19",
   minSdk: "28",
   requiredUnityLibrary: "lib/arm64-v8a/libunity.so",
   forbiddenAbis: ["armeabi-v7a", "x86", "x86_64"],

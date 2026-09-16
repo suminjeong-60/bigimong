@@ -3,12 +3,12 @@ import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
-import { inspectWithApkAnalyzer, validateMetadata, verifyApk } from "../scripts/verify-apk.mjs";
+import { EXPECTED_APK, inspectWithApkAnalyzer, validateMetadata, verifyApk } from "../scripts/verify-apk.mjs";
 
 const validMetadata = {
   applicationId: "com.bigimong.app",
-  versionName: "0.16.0",
-  versionCode: "16",
+  versionName: "0.19.0",
+  versionCode: "19",
   minSdk: "28",
   targetSdk: "36",
   permissions: ["android.permission.CAMERA"],
@@ -16,6 +16,18 @@ const validMetadata = {
   signatureVerified: true,
   files: ["lib/arm64-v8a/libunity.so", "lib/arm64-v8a/libUnityARCore.so", "assets/bin/Data/globalgamemanagers"],
 };
+
+test("APK release contract is pinned to v0.19", () => {
+  assert.equal(EXPECTED_APK.versionName, "0.19.0");
+  assert.equal(EXPECTED_APK.versionCode, "19");
+});
+
+test("APK verifier rejects the previous v0.16 release", () => {
+  assert.deepEqual(validateMetadata({ ...validMetadata, versionName: "0.16.0", versionCode: "16" }), [
+    "versionName expected 0.19.0 but received 0.16.0",
+    "versionCode expected 19 but received 16",
+  ]);
+});
 
 test("APK analyzer root-absolute paths match the ARM64 Unity library", () => {
   assert.deepEqual(validateMetadata({
@@ -33,15 +45,15 @@ test("APK analyzer root-absolute paths still reject forbidden ABIs", () => {
 
 function withTempApk(run) {
   const directory = mkdtempSync(join(tmpdir(), "bigimong-apk-"));
-  const apkPath = join(directory, "Bigimong-AR-v0.16-debug.apk");
-  const reportPath = join(directory, "Bigimong-AR-v0.16-verification.json");
+  const apkPath = join(directory, "Bigimong-AR-v0.19-debug.apk");
+  const reportPath = join(directory, "Bigimong-AR-v0.19-verification.json");
   writeFileSync(apkPath, "deterministic fake apk bytes");
   return Promise.resolve(run({ apkPath, reportPath })).finally(() => {
     rmSync(directory, { recursive: true, force: true });
   });
 }
 
-test("verifyApk writes a passing v0.16 report with SHA-256", async () => {
+test("verifyApk writes a passing v0.19 report with SHA-256", async () => {
   await withTempApk(async ({ apkPath, reportPath }) => {
     const report = await verifyApk({
       apkPath,

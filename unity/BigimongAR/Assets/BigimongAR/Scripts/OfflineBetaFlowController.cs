@@ -2,6 +2,7 @@ using System;
 using System.IO;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 using UnityEngine.XR.ARFoundation;
 
 namespace Bigimong.AR
@@ -38,10 +39,10 @@ namespace Bigimong.AR
         [SerializeField] private GameObject encounterCanvas;
         [SerializeField] private GameObject scanCanvas;
         [SerializeField] private GameObject resultCanvas;
-        [SerializeField] private Text petText;
-        [SerializeField] private Text encounterText;
-        [SerializeField] private Text scanText;
-        [SerializeField] private Text resultText;
+        [SerializeField] private TMP_Text petText;
+        [SerializeField] private TMP_Text encounterText;
+        [SerializeField] private TMP_Text scanText;
+        [SerializeField] private TMP_Text resultText;
         [SerializeField] private Button previousPetButton;
         [SerializeField] private Button nextPetButton;
         [SerializeField] private Button choosePetButton;

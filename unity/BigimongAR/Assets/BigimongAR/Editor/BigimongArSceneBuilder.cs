@@ -1,5 +1,6 @@
 #if UNITY_EDITOR
 using System.IO;
+using TMPro;
 using Bigimong.AR;
 using Unity.XR.CoreUtils;
 using UnityEditor;
@@ -21,6 +22,7 @@ namespace Bigimong.Editor
         [MenuItem("Bigimong/Create AR Battle Scene")]
         public static void CreateScene()
         {
+            BigimongFontAssetBuilder.Prepare();
             Directory.CreateDirectory("Assets/BigimongAR/Scenes");
             Directory.CreateDirectory("Assets/BigimongAR/Prefabs");
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
@@ -44,6 +46,7 @@ namespace Bigimong.Editor
             var sharedAnchor = systems.AddComponent<SharedAnchorCoordinator>();
             var offlineDemo = systems.AddComponent<ArBattleOfflineDemo>();
             var offlineFlow = systems.AddComponent<OfflineBetaFlowController>();
+            var characterCatalog = Resources.Load<CharacterPrefabCatalog>("ArCharacterCatalog");
 
             var placement = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
             placement.name = "Placement Indicator";
@@ -57,11 +60,14 @@ namespace Bigimong.Editor
             CreateBetaMenus(offlineFlow);
             var referenceUi = new GameObject("Reference Image UI").AddComponent<BigimongReferenceUi>();
             Assign(referenceUi, "flow", offlineFlow);
+            Assign(referenceUi, "theme", BigimongTypographyTheme.Shared);
+            CreateHatchHome(referenceUi, offlineFlow, characterCatalog);
             Assign(arena, "raycastManager", originObject.GetComponent<ARRaycastManager>());
             Assign(arena, "planeManager", originObject.GetComponent<ARPlaneManager>());
             Assign(arena, "placementIndicator", placement);
             Assign(arena, "battleRingPrefab", ringPrefab);
             Assign(director, "arena", arena);
+            Assign(director, "characterCatalog", characterCatalog);
             Assign(director, "sharedAnchor", sharedAnchor);
             Assign(director, "hud", hud);
             Assign(director, "summonDirector", summonDirector);
@@ -88,11 +94,163 @@ namespace Bigimong.Editor
             Assign(offlineFlow, "hud", hud);
             Assign(offlineFlow, "cameraTransform", cameraObject.transform);
             Assign(offlineFlow, "battleCanvas", hud.gameObject);
+            AssignArray(referenceUi, "retainedOverlayGroups", new[]
+            {
+                RetainedInputOwner(creator, "creatorCanvas"), RetainedInputOwner(creator, "editorEntry"),
+                RetainedInputOwner(offlineFlow, "petCanvas"), RetainedInputOwner(offlineFlow, "encounterCanvas"),
+                RetainedInputOwner(offlineFlow, "scanCanvas"), RetainedInputOwner(offlineFlow, "resultCanvas"),
+                RetainedInputOwner(offlineFlow, "battleCanvas")
+            });
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(ScenePath, true) };
             Selection.activeGameObject = systems;
             Debug.Log($"Bigimong AR battle scene created: {ScenePath}", sessionObject);
+        }
+
+        private static HatchHomeView CreateHatchHome(
+            BigimongReferenceUi referenceUi,
+            OfflineBetaFlowController flow,
+            CharacterPrefabCatalog characterCatalog)
+        {
+            var root = new GameObject("Hatch Home UI", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
+            root.GetComponent<CanvasGroup>().interactable = root.GetComponent<CanvasGroup>().blocksRaycasts = false;
+            var canvas = root.GetComponent<Canvas>();
+            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
+            canvas.sortingOrder = 30;
+            canvas.enabled = false;
+            var scaler = root.GetComponent<CanvasScaler>();
+            scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
+            scaler.referenceResolution = new Vector2(1080, 1920);
+            scaler.matchWidthOrHeight = .5f;
+            var safe = HomeRect(root.transform, "Safe Area", Vector2.zero, Vector2.one);
+            safe.gameObject.AddComponent<DeviceSafeArea>();
+            var background = HomeImage(safe, "Backdrop", Vector2.zero, Vector2.one, new Color(1f, .87f, .64f));
+            HomeImage(background.transform, "Sky", new Vector2(0, .42f), Vector2.one, new Color(.70f, .88f, .86f));
+            HomeImage(background.transform, "Ground", new Vector2(0, .2f), new Vector2(1, .42f), new Color(.83f, .88f, .66f));
+            var topStatus = HomeRect(safe, "Top Status", new Vector2(.03f, .966f), new Vector2(.97f, .998f));
+            var logoSlot = HomeRect(topStatus, "Logo Slot", Vector2.zero, new Vector2(.38f, 1));
+            var logo = HomeRect(logoSlot, "Approved Logo", Vector2.zero, Vector2.one).gameObject.AddComponent<RawImage>();
+            logo.texture = Resources.Load<Texture2D>("ReferenceUi/egg");
+            // Only the approved logo crop. The egg/home subject artwork is never a playable overlay.
+            logo.uvRect = new Rect(270f / 1030f, 1f - 270f / 1536f, 510f / 1030f, 215f / 1536f);
+            logo.raycastTarget = false;
+            var logoFit = logo.gameObject.AddComponent<AspectRatioFitter>();
+            logoFit.aspectMode = AspectRatioFitter.AspectMode.FitInParent; logoFit.aspectRatio = 510f / 215f;
+            var status = HomeText(topStatus, "Currency", new Vector2(.43f, 0), Vector2.one, "0 비기코인", 38, BigimongTextRole.COUNTER);
+            var subjectSwitch = HomeRect(safe, "Subject Switch", new Vector2(.18f, .932f), new Vector2(.82f, .963f));
+            var subject = HomeButton(subjectSwitch, "Subject", Vector2.zero, new Vector2(.49f, 1), "비기알");
+            var avatar = HomeButton(subjectSwitch, "Avatar", new Vector2(.51f, 0), Vector2.one, "아바타");
+            var viewportRect = HomeRect(safe, "Stage Viewport", new Vector2(0, .25f), new Vector2(1, .93f));
+            var viewport = viewportRect.gameObject.AddComponent<RawImage>();
+            viewport.raycastTarget = true;
+            var orbit = viewportRect.gameObject.AddComponent<HomeStageOrbitInput>();
+            // Switch cover is created below these layers by BindViewport; explicit hatch cover/silhouette stay above it.
+            var cover = HomeImage(viewportRect, "Hatch Transition Cover", Vector2.zero, Vector2.one, new Color(1, .94f, .78f, 0));
+            var silhouetteRect = HomeRect(viewportRect, "Hatch Silhouette", Vector2.zero, Vector2.one);
+            var silhouette = silhouetteRect.gameObject.AddComponent<RawImage>();
+            silhouette.raycastTarget = false;
+            silhouette.enabled = false;
+            var front = HomeButton(safe, "Front View Button", new Vector2(.75f, .211f), new Vector2(.98f, .249f), "정면 보기");
+            var progressPanel = HomeRect(safe, "Progress Panel", new Vector2(.03f, .211f), new Vector2(.73f, .249f));
+            var progress = HomeText(progressPanel, "Progress", new Vector2(0, .48f), new Vector2(1, 1), "0 / 30,000", 34, BigimongTextRole.COUNTER);
+            var cooldown = HomeText(progressPanel, "Cooldown", new Vector2(0, .17f), new Vector2(1, .5f), "알을 살짝 눌러 돌봐주세요", 23, BigimongTextRole.BODY);
+            HomeImage(progressPanel, "Track", Vector2.zero, new Vector2(1, .12f), BigimongTypographyTheme.Cocoa);
+            var fill = HomeImage(progressPanel, "Fill", Vector2.zero, new Vector2(1, .12f), BigimongTypographyTheme.Gold);
+            fill.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd");
+            fill.type = Image.Type.Filled; fill.fillMethod = Image.FillMethod.Horizontal; fill.fillAmount = 0;
+            var hatch = HomeButton(safe, "Hatch Button", new Vector2(.23f, .173f), new Vector2(.77f, .209f), "부화하기");
+            var plate = HomeRect(safe, "Species Plate", new Vector2(.03f, .173f), new Vector2(.73f, .249f));
+            var plateFace = HomeImage(plate, "Cocoa Plate", Vector2.zero, Vector2.one, BigimongTypographyTheme.Cocoa);
+            plateFace.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd"); plateFace.type = Image.Type.Sliced;
+            var species = HomeText(plate, "Species", Vector2.zero, Vector2.one, "", 36, BigimongTextRole.TITLE);
+            var noticePanel = HomeRect(safe, "Notice Panel", new Vector2(.03f, .151f), new Vector2(.97f, .171f));
+            var notice = HomeText(noticePanel, "Notice", Vector2.zero, new Vector2(.74f, 1), "걸음 연동 준비 중", 23, BigimongTextRole.BODY);
+            var retry = HomeButton(noticePanel, "Retry", new Vector2(.76f, 0), Vector2.one, "다시 시도");
+            retry.gameObject.SetActive(false);
+            // 15% safe height / two rows = 48dp at 360x640, or 44.4dp with 24dp top/bottom safe insets.
+            var navigation = HomeRect(safe, "Bottom Navigation", Vector2.zero, new Vector2(1, .15f));
+            var routes = new[] { "홈", "상점", "놀아주기", "1:1 대전", "도감", "퀘스트", "선물", "설정", "캐릭터" };
+            var buttons = new Button[routes.Length];
+            for (var i = 0; i < routes.Length; i++)
+            {
+                var row = i / 5; var column = i % 5;
+                buttons[i] = HomeButton(navigation, routes[i], new Vector2(column / 5f + .005f, row == 0 ? .5f : 0f),
+                    new Vector2((column + 1) / 5f - .005f, row == 0 ? 1f : .5f), routes[i]);
+            }
+            var view = root.AddComponent<HatchHomeView>();
+            var coordinator = root.AddComponent<HatchHomeCoordinator>();
+            var stage = root.AddComponent<HomeFocusStage>();
+            var sequence = root.AddComponent<HatchSequenceDirector>();
+            var hatchAudio = root.AddComponent<AudioSource>();
+            hatchAudio.playOnAwake = false;
+            hatchAudio.loop = false;
+            hatchAudio.spatialBlend = 0f;
+            hatchAudio.dopplerLevel = 0f;
+            hatchAudio.ignoreListenerPause = false;
+            hatchAudio.ignoreListenerVolume = false;
+            root.AddComponent<HatchAudioBinding>();
+            var walking = root.AddComponent<HatchHomeStepBridge>();
+            Assign(view, "coordinator", coordinator); Assign(view, "stage", stage); Assign(view, "sequence", sequence);
+            Assign(view, "orbit", orbit); Assign(view, "walkingProvider", walking); Assign(view, "characterCatalog", characterCatalog);
+            Assign(view, "referenceUi", referenceUi); Assign(view, "flow", flow); Assign(view, "theme", BigimongTypographyTheme.Shared);
+            Assign(view, "viewport", viewport); Assign(view, "cover", cover); Assign(view, "silhouette", silhouette);
+            Assign(view, "statusLabel", status); Assign(view, "subjectLabel", subject.GetComponentInChildren<TMP_Text>());
+            Assign(view, "avatarLabel", avatar.GetComponentInChildren<TMP_Text>());
+            Assign(view, "progressLabel", progress); Assign(view, "cooldownLabel", cooldown);
+            Assign(view, "hatchLabel", hatch.GetComponentInChildren<TMP_Text>()); Assign(view, "speciesLabel", species); Assign(view, "noticeLabel", notice);
+            Assign(view, "progressFill", fill); Assign(view, "subjectButton", subject); Assign(view, "avatarButton", avatar);
+            Assign(view, "frontButton", front); Assign(view, "hatchButton", hatch); Assign(view, "retryButton", retry);
+            AssignArray(view, "navigationButtons", buttons);
+            var serialized = new SerializedObject(view);
+            var property = serialized.FindProperty("navigationRoutes"); property.arraySize = routes.Length;
+            for (var i = 0; i < routes.Length; i++) property.GetArrayElementAtIndex(i).stringValue = routes[i];
+            serialized.ApplyModifiedPropertiesWithoutUndo();
+            Assign(referenceUi, "hatchHomeView", view); Assign(referenceUi, "hatchHomeCoordinator", coordinator);
+            return view;
+        }
+
+        private static RectTransform HomeRect(Transform parent, string name, Vector2 min, Vector2 max)
+        {
+            var node = new GameObject(name, typeof(RectTransform)); node.transform.SetParent(parent, false);
+            var rect = node.GetComponent<RectTransform>(); rect.anchorMin = min; rect.anchorMax = max;
+            rect.offsetMin = rect.offsetMax = Vector2.zero;
+            return rect;
+        }
+
+        private static CanvasGroup RetainedInputOwner(Object controller, string canvasField)
+        {
+            var canvas = new SerializedObject(controller).FindProperty(canvasField).objectReferenceValue as GameObject;
+            if (canvas == null) throw new System.InvalidOperationException("Missing retained canvas: " + canvasField);
+            var group = canvas.GetComponent<CanvasGroup>() ?? canvas.AddComponent<CanvasGroup>();
+            group.interactable = group.blocksRaycasts = false;
+            group.ignoreParentGroups = false;
+            return group;
+        }
+        private static Image HomeImage(Transform parent, string name, Vector2 min, Vector2 max, Color color)
+        {
+            var graphic = HomeRect(parent, name, min, max).gameObject.AddComponent<Image>();
+            graphic.color = color; graphic.raycastTarget = false; return graphic;
+        }
+        private static TMP_Text HomeText(Transform parent, string name, Vector2 min, Vector2 max, string value, float size, BigimongTextRole role)
+        {
+            var text = HomeRect(parent, name, min, max).gameObject.AddComponent<TextMeshProUGUI>();
+            text.text = value; text.fontSize = size; text.alignment = TextAlignmentOptions.Center;
+            BigimongTypographyTheme.Shared.Apply(text, role); return text;
+        }
+        private static Button HomeButton(Transform parent, string name, Vector2 min, Vector2 max, string caption)
+        {
+            var graphic = HomeImage(parent, name, min, max, BigimongTypographyTheme.Gold);
+            graphic.sprite = AssetDatabase.GetBuiltinExtraResource<Sprite>("UI/Skin/UISprite.psd"); graphic.type = Image.Type.Sliced;
+            graphic.raycastTarget = true;
+            var outline = graphic.gameObject.AddComponent<Outline>();
+            outline.effectColor = BigimongTypographyTheme.Cocoa; outline.effectDistance = new Vector2(3, -3);
+            var shadow = graphic.gameObject.AddComponent<Shadow>();
+            shadow.effectColor = new Color(.22f, .12f, .08f, .35f); shadow.effectDistance = new Vector2(0, -5);
+            var button = graphic.gameObject.AddComponent<Button>(); button.targetGraphic = graphic;
+            button.gameObject.AddComponent<ButtonPressMotion>();
+            HomeText(button.transform, "Label", Vector2.zero, Vector2.one, caption, 29, BigimongTextRole.ACTION);
+            return button;
         }
 
         private static GameObject CreateRingPrefab()
@@ -557,9 +715,9 @@ namespace Bigimong.Editor
             return panel;
         }
 
-        private static InputField CreateInputField(Transform parent, string name, Vector2 position, Vector2 size)
+        private static TMP_InputField CreateInputField(Transform parent, string name, Vector2 position, Vector2 size)
         {
-            var inputObject = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(InputField));
+            var inputObject = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(TMP_InputField));
             inputObject.transform.SetParent(parent, false);
             var rect = inputObject.GetComponent<RectTransform>();
             rect.sizeDelta = size;
@@ -567,15 +725,16 @@ namespace Bigimong.Editor
             inputObject.GetComponent<Image>().color = new Color(0.96f, 0.96f, 0.98f, 0.96f);
 
             var value = CreateText(inputObject.transform, "Text", string.Empty, Vector2.zero, 30);
-            value.alignment = TextAnchor.MiddleLeft;
+            value.alignment = TextAlignmentOptions.MidlineLeft;
             value.color = new Color(0.08f, 0.08f, 0.10f);
             value.rectTransform.sizeDelta = size - new Vector2(48, 12);
             var placeholder = CreateText(inputObject.transform, "Placeholder", "이름을 입력하세요", Vector2.zero, 30);
-            placeholder.alignment = TextAnchor.MiddleLeft;
+            placeholder.alignment = TextAlignmentOptions.MidlineLeft;
             placeholder.color = new Color(0.38f, 0.39f, 0.44f, 0.72f);
             placeholder.rectTransform.sizeDelta = size - new Vector2(48, 12);
 
-            var input = inputObject.GetComponent<InputField>();
+            var input = inputObject.GetComponent<TMP_InputField>();
+            input.textViewport = rect;
             input.textComponent = value;
             input.placeholder = placeholder;
             input.characterLimit = 16;
@@ -601,18 +760,18 @@ namespace Bigimong.Editor
             return panel;
         }
 
-        private static Text CreateText(Transform parent, string name, string value, Vector2 position, int size)
+        private static TMP_Text CreateText(Transform parent, string name, string value, Vector2 position, int size)
         {
-            var textObject = new GameObject(name, typeof(RectTransform), typeof(Text));
+            var textObject = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
             textObject.transform.SetParent(parent, false);
             var rect = textObject.GetComponent<RectTransform>();
             rect.sizeDelta = new Vector2(900, 100);
             rect.anchoredPosition = position;
-            var text = textObject.GetComponent<Text>();
+            var text = textObject.GetComponent<TMP_Text>();
             text.text = value;
-            text.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            BigimongTypographyTheme.Shared.Apply(text, size >= 32 ? BigimongTextRole.ACTION : BigimongTextRole.COUNTER);
             text.fontSize = size;
-            text.alignment = TextAnchor.MiddleCenter;
+            text.alignment = TextAlignmentOptions.Center;
             text.color = Color.white;
             text.raycastTarget = false;
             return text;

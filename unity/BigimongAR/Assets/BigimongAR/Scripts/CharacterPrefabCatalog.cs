@@ -35,6 +35,13 @@ namespace Bigimong.AR
             return entry?.Resolve(stage) ?? fallbackPrefab;
         }
 
+        public bool TryResolve(int artId, string stage, out GameObject prefab)
+        {
+            var entry = characters.Find(candidate => candidate.artId == Mathf.Clamp(artId, 1, 30));
+            prefab = entry?.Resolve(stage);
+            return prefab != null;
+        }
+
         private void OnValidate()
         {
             var seen = new HashSet<int>();

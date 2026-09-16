@@ -13,16 +13,27 @@ namespace Bigimong.AR
         private Quaternion upperHome;
         private Quaternion lowerHome;
         private Quaternion handHome;
+        private Material runtimeMedallionMaterial;
 
         public Transform ThrownMedallion { get; private set; }
+        public bool HasThrowPoseRig => rightUpperArm != null && rightLowerArm != null && rightHand != null;
 
         public void Initialize(Transform value)
         {
             arenaRoot = value;
-            rightUpperArm = transform.Find("ArmUpperRight");
-            rightLowerArm = transform.Find("ArmLowerRight");
-            rightHand = transform.Find("HandRight");
-            wornMedallion = transform.Find("SummoningMedallion");
+            var animator = GetComponentInChildren<Animator>(true);
+            if (animator != null && animator.avatar != null && animator.avatar.isValid && animator.avatar.isHuman)
+            {
+                rightUpperArm = animator.GetBoneTransform(HumanBodyBones.RightUpperArm);
+                rightLowerArm = animator.GetBoneTransform(HumanBodyBones.RightLowerArm);
+                rightHand = animator.GetBoneTransform(HumanBodyBones.RightHand);
+            }
+
+            rightUpperArm ??= FindRecursive(transform, "ArmUpperRight");
+            rightLowerArm ??= FindRecursive(transform, "ArmLowerRight");
+            rightHand ??= FindRecursive(transform, "HandRight");
+            wornMedallion = FindRecursive(transform, "SummoningMedallion");
+            if (wornMedallion == null) wornMedallion = CreateRuntimeMedallion();
             if (rightUpperArm != null) upperHome = rightUpperArm.localRotation;
             if (rightLowerArm != null) lowerHome = rightLowerArm.localRotation;
             if (rightHand != null) handHome = rightHand.localRotation;
@@ -105,6 +116,53 @@ namespace Bigimong.AR
             if (rightUpperArm != null) rightUpperArm.localRotation = upperHome;
             if (rightLowerArm != null) rightLowerArm.localRotation = lowerHome;
             if (rightHand != null) rightHand.localRotation = handHome;
+        }
+
+        private Transform CreateRuntimeMedallion()
+        {
+            var medallion = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            medallion.name = "SummoningMedallion";
+            medallion.transform.SetParent(rightHand != null ? rightHand : transform, false);
+            medallion.transform.localPosition = rightHand != null ? new Vector3(0f, -0.02f, 0.08f) : Vector3.up * 0.9f;
+            medallion.transform.localRotation = Quaternion.Euler(90f, 0f, 0f);
+            medallion.transform.localScale = new Vector3(0.055f, 0.012f, 0.055f);
+
+            var collider = medallion.GetComponent<Collider>();
+            if (collider != null)
+            {
+                if (Application.isPlaying) Destroy(collider);
+                else DestroyImmediate(collider);
+            }
+
+            var shader = Shader.Find("Universal Render Pipeline/Lit") ?? Shader.Find("Standard");
+            if (shader != null)
+            {
+                runtimeMedallionMaterial = new Material(shader)
+                {
+                    name = "Runtime Summoning Medallion",
+                    color = new Color(0.96f, 0.67f, 0.12f, 1f),
+                };
+                medallion.GetComponent<Renderer>().sharedMaterial = runtimeMedallionMaterial;
+            }
+            return medallion.transform;
+        }
+
+        private static Transform FindRecursive(Transform root, string objectName)
+        {
+            if (root.name == objectName) return root;
+            for (var index = 0; index < root.childCount; index++)
+            {
+                var match = FindRecursive(root.GetChild(index), objectName);
+                if (match != null) return match;
+            }
+            return null;
+        }
+
+        private void OnDestroy()
+        {
+            if (runtimeMedallionMaterial == null) return;
+            if (Application.isPlaying) Destroy(runtimeMedallionMaterial);
+            else DestroyImmediate(runtimeMedallionMaterial);
         }
     }
 }

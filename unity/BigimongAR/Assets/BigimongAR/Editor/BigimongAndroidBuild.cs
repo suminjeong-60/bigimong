@@ -5,32 +5,47 @@ using UnityEditor;
 using UnityEditor.Build;
 using UnityEditor.Build.Reporting;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace Bigimong.Editor
 {
     public static class BigimongAndroidBuild
     {
         private const string ApplicationId = "com.bigimong.app";
-        private const string BundleVersion = "0.16.0";
-        private const int VersionCode = 16;
+        private const string BundleVersion = "0.19.0";
+        private const int VersionCode = 19;
         private const string ScenePath = "Assets/BigimongAR/Scenes/ArBattle.unity";
-        private const string ApkName = "Bigimong-AR-v0.16-debug.apk";
+        private const string ApkName = "Bigimong-AR-v0.19-debug.apk";
 
         public static void BuildDebugApk()
         {
+            RequireGraphicsDevice();
+            GraphicsBuildEditorChecks.RunBehaviorChecks();
+            BigimongFontAssetBuilder.Prepare();
+            Bigimong.AR.EditorChecks.HatchHomeStateEditorChecks.RunBehaviorChecks();
+            Bigimong.AR.EditorChecks.HatchHomeStoreEditorChecks.RunBehaviorChecks();
+            Bigimong.AR.EditorChecks.HatchProgressEditorChecks.RunBehaviorChecks();
+            Bigimong.AR.EditorChecks.HatchSelectionEditorChecks.RunBehaviorChecks();
+            Bigimong.AR.EditorChecks.HomeCharacterResolverEditorChecks.RunBehaviorChecks();
+            Bigimong.AR.EditorChecks.HomeFocusStageEditorChecks.RunBehaviorChecks();
+            Bigimong.AR.EditorChecks.HatchSequenceEditorChecks.RunBehaviorChecks();
+            Bigimong.AR.EditorChecks.HatchAudioEditorChecks.RunBehaviorChecks();
+            Bigimong.AR.EditorChecks.HomeStagePerformanceEditorChecks.RunBehaviorChecks();
             Bigimong.AR.EditorChecks.AvatarProfileStoreEditorChecks.Run();
             Bigimong.AR.EditorChecks.AvatarCreatorEditorChecks.RunBehaviorChecks();
             Bigimong.AR.EditorChecks.SummonSequenceEditorChecks.RunBehaviorChecks();
             Bigimong.AR.EditorChecks.CombatPresentationEditorChecks.RunBehaviorChecks();
             Bigimong.AR.EditorChecks.OfflineBetaEditorChecks.RunBehaviorChecks();
-            Bigimong.AR.EditorChecks.OfflineReferenceProgressEditorTests.RunBehaviorChecks();
             Bigimong.AR.EditorChecks.ReferenceVisualEditorChecks.RunBehaviorChecks();
+            Bigimong.AR.EditorChecks.VarcoAssetImportEditorChecks.PrepareAndValidate();
             BigimongArSceneBuilder.CreateScene();
             Bigimong.AR.EditorChecks.AvatarCreatorEditorChecks.RunSceneChecks();
             Bigimong.AR.EditorChecks.SummonSequenceEditorChecks.RunSceneChecks();
             Bigimong.AR.EditorChecks.OfflineBetaEditorChecks.RunSceneChecks();
             Bigimong.AR.EditorChecks.ReferenceVisualEditorChecks.RunSceneChecks();
             Bigimong.AR.EditorChecks.BigimongReferenceUiEditorChecks.RunSceneChecks();
+            Bigimong.AR.EditorChecks.HatchHomeSceneEditorChecks.RunSceneChecks();
+            Bigimong.AR.EditorChecks.HatchAudioEditorChecks.RunSceneChecks();
             ConfigureAndroidPlayer();
             ArConfigurationEditorChecks.Run();
 
@@ -55,6 +70,20 @@ namespace Bigimong.Editor
             }
 
             Debug.Log($"Bigimong AR debug APK created: {outputPath}");
+        }
+
+        private static void RequireGraphicsDevice()
+        {
+            Debug.Log($"Bigimong graphics gate: type={SystemInfo.graphicsDeviceType}, name={SystemInfo.graphicsDeviceName}, " +
+                $"version={SystemInfo.graphicsDeviceVersion}, renderTextures={SystemInfo.supportsRenderTextures}");
+            RequireGraphicsDevice(SystemInfo.graphicsDeviceType, SystemInfo.supportsRenderTextures);
+        }
+
+        internal static void RequireGraphicsDevice(GraphicsDeviceType device, bool renderTextures)
+        {
+            if (device == GraphicsDeviceType.Null || !renderTextures)
+                throw new BuildFailedException("Bigimong requires a graphics device for mandatory RenderTexture/Camera.Render/ReadPixels checks. " +
+                    "Remove -nographics; use a graphics-capable local editor or macOS GameCI with enableGpu: true. Checks cannot be skipped.");
         }
 
         private static void ConfigureAndroidPlayer()

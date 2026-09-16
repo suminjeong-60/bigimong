@@ -1,5 +1,8 @@
 using System;
+using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
+using UnityEngine.EventSystems;
 using UnityEngine.UI;
 
 namespace Bigimong.AR
@@ -14,34 +17,44 @@ namespace Bigimong.AR
             "ReferenceUi/loading", "ReferenceUi/battle-loading", "ReferenceUi/avatar",
             "ReferenceUi/egg", "ReferenceUi/home"
         };
-        private static readonly string[] Species =
-        {
-            "빨간 티라노사우루스", "트리케라톱스", "익룡", "스테고사우루스", "브라키오사우루스",
-            "스피노사우루스", "안킬로사우루스", "벨로키랍토르", "코리토사우루스", "카르노타우루스",
-            "모사사우루스", "알로사우루스", "케찰코아틀루스", "데이노니쿠스", "유오플로케팔루스",
-            "바리오닉스", "오비랍토르", "프로토케라톱스", "갈리미무스", "드라코렉스",
-            "기가노토사우루스", "딜로포사우루스", "이구아노돈", "켄트로사우루스", "테리지노사우루스",
-            "콤프소그나투스", "파라사우롤로푸스", "미크로랍토르", "브론토사우루스", "티타노사우루스"
-        };
         private static readonly Color Cocoa = new Color(.22f, .12f, .08f, .97f);
         private static readonly Color Cream = new Color(1f, .94f, .78f);
         private static readonly Color Gold = new Color(1f, .70f, .13f);
         private static readonly Color Orange = new Color(.97f, .42f, .14f);
         [SerializeField] private OfflineBetaFlowController flow;
+        [SerializeField] private HatchHomeView hatchHomeView;
+        [SerializeField] private HatchHomeCoordinator hatchHomeCoordinator;
+        [SerializeField] private BigimongTypographyTheme theme;
+        // Ordered owners: creator, editor entry, pet selection, encounter, scan, result, battle.
+        [SerializeField] private CanvasGroup[] retainedOverlayGroups = Array.Empty<CanvasGroup>();
+        private bool homeInputOwned;
+        private int appliedRetainedInputMask = -1;
+        private int appliedRetainedActiveMask = -1;
+        private int appliedRetainedPhase = -2;
+        private string appliedRetainedScreen;
+        private List<Selectable> appliedRetainedFocusControls = new();
+        private List<Selectable> retainedFocusScratch = new();
+        private readonly List<Selectable> retainedSelectableScratch = new();
         private Canvas canvas;
+        private CanvasGroup canvasGroup;
         private RectTransform board;
         private RawImage artwork;
         private RectTransform marker;
-        private Text statusNotice;
+        private TMP_Text statusNotice;
         private GameObject noticePanel;
         private GameObject dialogue;
-        private Text dialogueTitle;
-        private Text dialogueBody;
-        private OfflineReferenceProgress progress;
+        private TMP_Text dialogueTitle;
+        private TMP_Text dialogueBody;
+        private HatchHomeSnapshot progress => hatchHomeCoordinator.Snapshot;
+        private bool Hatched => progress != null && progress.Phase is HatchHomePhase.REVEAL or HatchHomePhase.HOME;
+        private int Level => Mathf.Clamp(1 + progress.dragonExperience / 1000, 1, 30);
+        private string GrowthStage => Level >= 20 ? "성장기" : Level >= 10 ? "청소년기" : "아동기";
+        private int codexPreviewArtId = 1;
         private string screen;
         private bool started;
         private bool girl;
         private bool galleryVisible = true;
+        private bool dialogueFromHome;
         private float nextScreenAt;
         public string CurrentScreen => screen;
 
@@ -68,9 +81,12 @@ namespace Bigimong.AR
 
         private void Awake()
         {
+            if (canvas != null) return;
             canvas = gameObject.AddComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 30;
+            canvasGroup = gameObject.AddComponent<CanvasGroup>();
+            canvasGroup.interactable = canvasGroup.blocksRaycasts = false;
             var scaler = gameObject.AddComponent<CanvasScaler>();
             scaler.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
             scaler.referenceResolution = new Vector2(Width, Height);
@@ -100,6 +116,7 @@ namespace Bigimong.AR
         private void OnEnable()
         {
             if (flow != null) flow.HomeRequested += OnHomeRequested;
+            SuspendRetainedOverlayInput();
         }
 
         private void OnDisable()
@@ -109,7 +126,6 @@ namespace Bigimong.AR
 
         private void OnHomeRequested()
         {
-            if (progress == null) progress = OfflineReferenceProgressStore.Load();
             ShowHome();
         }
 
@@ -117,20 +133,21 @@ namespace Bigimong.AR
         {
             if (flow == null || !flow.IsActive)
             {
-                if (started) { canvas.enabled = false; started = false; }
+                if (started) { Hide(); started = false; }
+                ApplyRetainedInputPolicy();
                 return;
             }
             if (!started)
             {
                 started = true;
-                progress = OfflineReferenceProgressStore.Load();
+                hatchHomeView.EnsureInitialized();
                 AudioListener.volume = progress.soundEnabled ? 1f : 0f;
                 girl = AvatarProfileStore.Load().bodyType == "FEMININE";
                 Show("loading");
                 nextScreenAt = Time.unscaledTime + 1f;
             }
             if (screen == "loading" && Time.unscaledTime >= nextScreenAt)
-                Show(!AvatarProfileStore.HasSavedProfile ? "avatar" : progress.hatched ? "home" : "egg");
+                ShowHome();
             if (screen == "battle-loading" && canvas.enabled && Time.unscaledTime >= nextScreenAt)
             {
                 Hide();
@@ -147,7 +164,7 @@ namespace Bigimong.AR
             if (!canvas.enabled && screen == "battle-loading" && flow.Phase == OfflineBetaPhase.PetTestSelect &&
                 Time.unscaledTime > nextScreenAt + 1f)
                 ShowHome();
-            if (canvas.enabled && Input.GetKeyDown(KeyCode.Escape)) Activate("뒤로가기");
+            if ((canvas.enabled || hatchHomeView.IsVisible) && Input.GetKeyDown(KeyCode.Escape)) Activate("뒤로가기");
         }
 
         private static bool IsArtwork(string target)
@@ -158,13 +175,29 @@ namespace Bigimong.AR
 
         private void ShowHome()
         {
-            Show(!AvatarProfileStore.HasSavedProfile ? "avatar" : progress.hatched ? "home" : "egg");
+            if (progress.Phase is HatchHomePhase.HATCHING or HatchHomePhase.REVEAL)
+            {
+                Show(progress.Phase == HatchHomePhase.HATCHING ? "egg" : "home");
+                return; // Durable reveal recovery precedes optional avatar/profile navigation.
+            }
+            Show(!AvatarProfileStore.HasSavedProfile ? "avatar" : Hatched ? "home" : "egg");
         }
 
         private void Show(string target)
         {
+            SuspendRetainedOverlayInput();
             screen = target;
-            var art = IsArtwork(target) ? target : progress.hatched ? "home" : "egg";
+            if (target == "egg" || target == "home")
+            {
+                canvas.enabled = false;
+                canvasGroup.interactable = canvasGroup.blocksRaycasts = false;
+                artwork.texture = null;
+                dialogue.SetActive(false);
+                hatchHomeView.Show();
+                return;
+            }
+            hatchHomeView.Hide();
+            var art = IsArtwork(target) ? target : "loading";
             var path = "ReferenceUi/" + art;
             if (Array.IndexOf(ArtScreens, path) < 0)
             {
@@ -178,8 +211,10 @@ namespace Bigimong.AR
                 Hide();
                 return;
             }
-            artwork.texture = texture;
+            artwork.texture = IsArtwork(target) ? texture : null;
+            artwork.color = IsArtwork(target) ? Color.white : Cream;
             canvas.enabled = true;
+            canvasGroup.interactable = canvasGroup.blocksRaycasts = true;
             noticePanel.SetActive(target != "loading" && target != "battle-loading");
             statusNotice.text = "오프라인 게임 · 저장된 진행 상태";
             dialogue.SetActive(false);
@@ -191,17 +226,15 @@ namespace Bigimong.AR
                     child.name.StartsWith("Game:", StringComparison.Ordinal))
                 {
                     child.SetActive(false);
-                    Destroy(child);
+                    if (Application.isPlaying) Destroy(child); else DestroyImmediate(child);
                 }
             }
             if (target == "avatar") CreateAvatarCursorRepair(texture);
-            if (target == "home") CreateHomeIdleOverlay(texture);
             if (target == "loading" || target == "battle-loading") return;
             Nav("뒤로가기", 10, 10, 120, 120);
             Nav("설정", 897, 7, 120, 120);
             Nav("뒤로가기", 8, 1395, 143, 137);
             Nav("설정", 892, 1390, 133, 140);
-            if (target != "avatar") BuildCurrencyHud(art == "egg");
             if (target == "avatar")
             {
                 Nav("남자", 195, 1045, 280, 210);
@@ -209,6 +242,7 @@ namespace Bigimong.AR
                 Nav("선택 완료", 273, 1339, 488, 190);
                 Nav("선물", 773, 1170, 234, 195);
                 UpdateMarker();
+                FocusFirstControl();
                 return;
             }
             Nav("상점", 12, 150, 212, 211);
@@ -217,22 +251,127 @@ namespace Bigimong.AR
             Nav("도감", 386, 1380, 169, 155);
             Nav("퀘스트", 555, 1380, 170, 155);
             Nav("선물", 706, 1380, 180, 155);
-            if (target == "egg")
-            {
-                Nav("알 닦기", 275, 550, 560, 575);
-                BuildProgressHud(false);
-            }
-            else if (target == "home")
-            {
-                Nav("1:1 대전", 12, 560, 214, 211);
-                Nav("캐릭터", 290, 613, 515, 460);
-                Nav("선물", 797, 1154, 222, 223);
-                BuildProgressHud(true);
-            }
-            else BuildPage(target);
+            BuildPage(target);
+            FocusFirstControl();
         }
 
-        private void Hide() { if (canvas != null) canvas.enabled = false; }
+        private void Hide()
+        {
+            if (canvas != null) canvas.enabled = false;
+            if (canvasGroup != null) SetOverlayInput(canvasGroup, false);
+            hatchHomeView?.Hide();
+            ApplyRetainedInputPolicy();
+        }
+
+        public void ClaimHomeInputOwnership()
+        {
+            if (homeInputOwned) return;
+            homeInputOwned = true;
+            if (canvas != null) canvas.enabled = false;
+            if (canvasGroup != null) SetOverlayInput(canvasGroup, false);
+            SuspendRetainedOverlayInput();
+        }
+
+        public void ReleaseHomeInputOwnership()
+        {
+            if (!homeInputOwned) return;
+            homeInputOwned = false;
+            // Releasing home is not authority to restore another screen. Show/Hide owns the next route.
+            SuspendRetainedOverlayInput();
+        }
+
+        public void SuspendRetainedOverlayInput()
+        {
+            appliedRetainedInputMask = -1;
+            foreach (var group in retainedOverlayGroups) SetOverlayInput(group, false);
+        }
+
+        private void ApplyRetainedInputPolicy()
+        {
+            var blocked = homeInputOwned || (canvas != null && canvas.enabled) ||
+                (hatchHomeView != null && hatchHomeView.IsVisible) || (hatchHomeCoordinator != null && hatchHomeCoordinator.InputLocked);
+            var inputMask = 0;
+            var activeMask = 0;
+            for (var index = 0; index < retainedOverlayGroups.Length; index++)
+            {
+                if (retainedOverlayGroups[index] != null && retainedOverlayGroups[index].gameObject.activeInHierarchy)
+                    activeMask |= 1 << index;
+                var allowed = false;
+                if (!blocked && flow != null)
+                {
+                    if (!flow.IsActive) allowed = index == 6 && retainedOverlayGroups[index] != null &&
+                        retainedOverlayGroups[index].gameObject.activeInHierarchy; // Only the HUD activated by the Android host.
+                    else allowed = index switch
+                    {
+                        0 => flow.Phase == OfflineBetaPhase.AvatarCreate,
+                        1 or 2 => flow.Phase == OfflineBetaPhase.PetTestSelect,
+                        3 => flow.Phase == OfflineBetaPhase.TyrannosaurEncounter,
+                        4 => flow.Phase == OfflineBetaPhase.ArScan,
+                        5 => flow.Phase == OfflineBetaPhase.Result,
+                        6 => flow.Phase is OfflineBetaPhase.ArScan or OfflineBetaPhase.SummonSequence or OfflineBetaPhase.Battle or OfflineBetaPhase.Result,
+                        _ => false
+                    };
+                }
+                if (allowed) inputMask |= 1 << index;
+            }
+            var phase = flow != null && flow.IsActive ? (int)flow.Phase : -1;
+            var ownershipChanged = inputMask != appliedRetainedInputMask || activeMask != appliedRetainedActiveMask ||
+                phase != appliedRetainedPhase || screen != appliedRetainedScreen;
+            if (ownershipChanged)
+            {
+                appliedRetainedInputMask = inputMask;
+                appliedRetainedActiveMask = activeMask;
+                appliedRetainedPhase = phase;
+                appliedRetainedScreen = screen;
+                for (var index = 0; index < retainedOverlayGroups.Length; index++)
+                    SetOverlayInput(retainedOverlayGroups[index], (inputMask & (1 << index)) != 0);
+            }
+            // Sample the exact ordered eligible controls into reusable buffers, without per-frame LINQ/arrays.
+            // Read after applying owner permissions: IsInteractable includes the owning CanvasGroup.
+            retainedFocusScratch.Clear();
+            for (var index = 0; index < retainedOverlayGroups.Length; index++)
+            {
+                var group = retainedOverlayGroups[index];
+                if ((inputMask & activeMask & (1 << index)) == 0 || group == null) continue;
+                group.GetComponentsInChildren(false, retainedSelectableScratch);
+                foreach (var selectable in retainedSelectableScratch)
+                    if (selectable.IsActive() && selectable.IsInteractable() && selectable.navigation.mode != Navigation.Mode.None)
+                        retainedFocusScratch.Add(selectable);
+            }
+            var availabilityChanged = retainedFocusScratch.Count != appliedRetainedFocusControls.Count;
+            for (var index = 0; !availabilityChanged && index < retainedFocusScratch.Count; index++)
+                availabilityChanged = retainedFocusScratch[index] != appliedRetainedFocusControls[index];
+            if (!ownershipChanged && !availabilityChanged) return; // Preserve non-first and intentional null focus on stable frames.
+            var previous = appliedRetainedFocusControls;
+            appliedRetainedFocusControls = retainedFocusScratch;
+            retainedFocusScratch = previous;
+            if (EventSystem.current == null) return;
+            var selected = EventSystem.current.currentSelectedGameObject;
+            if (selected != null && !appliedRetainedFocusControls.Contains(selected.GetComponent<Selectable>()))
+                foreach (var group in retainedOverlayGroups)
+                    if (group != null && selected.transform.IsChildOf(group.transform))
+                    {
+                        EventSystem.current.SetSelectedGameObject(null);
+                        break;
+                    }
+            if (EventSystem.current.currentSelectedGameObject == null && appliedRetainedFocusControls.Count > 0)
+                EventSystem.current.SetSelectedGameObject(appliedRetainedFocusControls[0].gameObject);
+        }
+
+        private static void SetOverlayInput(CanvasGroup group, bool allowed)
+        {
+            if (group == null) return;
+            group.interactable = group.blocksRaycasts = allowed;
+            if (!allowed && EventSystem.current != null && EventSystem.current.currentSelectedGameObject != null &&
+                EventSystem.current.currentSelectedGameObject.transform.IsChildOf(group.transform))
+                EventSystem.current.SetSelectedGameObject(null);
+        }
+
+        private void FocusFirstControl()
+        {
+            var button = board.GetComponentInChildren<Button>();
+            if (EventSystem.current != null && button != null) EventSystem.current.SetSelectedGameObject(button.gameObject);
+        }
 
         private void Nav(string action, float x, float y, float w, float h)
         {
@@ -245,6 +384,8 @@ namespace Bigimong.AR
             button.targetGraphic = graphic;
             obj.AddComponent<ButtonPressMotion>();
             button.onClick.AddListener(() => Activate(action));
+            if (screen != "avatar")
+                Label("Navigation Label", obj.transform, action, 0, 0, w, h, 31, Cream, w, h);
         }
 
         private static void Layout(RectTransform rect, float x, float y, float w, float h)
@@ -256,9 +397,9 @@ namespace Bigimong.AR
 
         public void Activate(string action)
         {
-            if (!canvas.enabled || string.IsNullOrEmpty(screen)) return;
+            if ((!canvas.enabled && !hatchHomeView.IsVisible) || string.IsNullOrEmpty(screen) || hatchHomeCoordinator.InputLocked) return;
             if (dialogue.activeSelf && action != "뒤로가기") return;
-            if (dialogue.activeSelf) { dialogue.SetActive(false); return; }
+            if (dialogue.activeSelf) { CloseDialogue(); return; }
             if (action == "남자" || action == "여자")
             {
                 girl = action == "여자";
@@ -274,29 +415,15 @@ namespace Bigimong.AR
                     OpenDialogue("아바타 선택", "아바타를 저장하지 못했어요. 다시 시도해 주세요.");
                     return;
                 }
-                Show(progress.hatched ? "home" : "egg");
-                return;
-            }
-            if (action == "알 닦기" && screen == "egg")
-            {
-                if (progress.CanHatch)
-                {
-                    progress.Hatch();
-                    SaveAndShow("home");
-                    OpenDialogue("비기몽이 태어났어요!", "01 빨간 티라노사우루스를 만나 보세요. 알과 육성 기록은 이 기기에 저장됩니다.");
-                }
-                else if (progress.PolishEgg())
-                {
-                    SaveAndShow("egg");
-                    if (progress.CanHatch) OpenDialogue("부화 준비 완료!", "알을 한 번 더 누르면 빨간 티라노사우루스를 만납니다.");
-                }
+                hatchHomeCoordinator.SetAvatarProfile(profile);
+                Show(Hatched ? "home" : "egg");
                 return;
             }
             if (HandleGameAction(action)) return;
             var destination = ResolveDestination(screen, action);
             if (destination == "battle-loading")
             {
-                if (!AvatarProfileStore.HasSavedProfile || !progress.hatched || flow.Phase != OfflineBetaPhase.PetTestSelect)
+                if (!AvatarProfileStore.HasSavedProfile || !Hatched || flow.Phase != OfflineBetaPhase.PetTestSelect)
                 {
                     OpenDialogue("연습 대전", "아바타를 선택하고 알을 부화시킨 후 AR 연습 대전을 시작할 수 있어요.");
                     return;
@@ -311,128 +438,48 @@ namespace Bigimong.AR
 
         private bool HandleGameAction(string action)
         {
-            if (action == "알 부화" && screen == "egg")
+            HomeSideActivityAction? sideAction = action switch
             {
-                if (progress.Hatch()) SaveAndShow("home");
-                return true;
-            }
-            if (action == "함께 놀기" && screen == "play")
+                "함께 놀기" when screen == "play" => HomeSideActivityAction.Play,
+                "오늘의 선물 받기" when screen == "gift" => HomeSideActivityAction.DailyGift,
+                "퀘스트 보상 받기" when screen == "quest" => HomeSideActivityAction.QuestReward,
+                "간식 구매" when screen == "shop" => HomeSideActivityAction.BuySnack,
+                "간식 주기" when screen == "character" => HomeSideActivityAction.Feed,
+                "소리 전환" when screen == "settings" => HomeSideActivityAction.ToggleSound,
+                _ => null
+            };
+            if (sideAction.HasValue)
             {
-                var wasHatched = progress.hatched;
-                if (!progress.Play(DateTime.UtcNow))
+                var result = hatchHomeCoordinator.ApplySideActivity(sideAction.Value);
+                if (result.Accepted)
                 {
-                    OpenDialogue("잠깐 쉬어요", "놀아주기는 10초마다 할 수 있어요. 하루 최대 100번입니다.");
-                    return true;
+                    AudioListener.volume = progress.soundEnabled ? 1f : 0f;
+                    Show(screen);
                 }
-                SaveAndShow("play");
-                if (!wasHatched && progress.CanHatch) OpenDialogue("알이 빛나요!", "홈 화면에서 알을 눌러 비기몽을 만나 보세요.");
-                return true;
-            }
-            if (action == "오늘의 선물 받기" && screen == "gift")
-            {
-                if (!progress.ClaimGift(DateTime.UtcNow))
-                    OpenDialogue("오늘의 선물", "오늘 선물은 이미 받았어요. 내일 다시 만나요!");
-                else SaveAndShow("gift");
-                return true;
-            }
-            if (action == "퀘스트 보상 받기" && screen == "quest")
-            {
-                if (!progress.ClaimQuest(DateTime.UtcNow))
-                    OpenDialogue("퀘스트", "오늘 함께 놀기 3회를 완료하면 보상을 받을 수 있어요.");
-                else SaveAndShow("quest");
-                return true;
-            }
-            if (action == "간식 구매" && screen == "shop")
-            {
-                if (!progress.BuySnack()) OpenDialogue("상점", "비기코인이 부족해요. 함께 놀거나 오늘의 선물을 받아 보세요.");
-                else SaveAndShow("shop");
-                return true;
-            }
-            if (action == "간식 주기" && screen == "character")
-            {
-                if (!progress.Feed()) OpenDialogue("캐릭터", "부화한 비기몽과 간식이 필요해요. 상점에서 간식을 구할 수 있어요.");
-                else SaveAndShow("character");
+                else OpenDialogue("알림", result.Error == "save_failed" ? "저장하지 못했어요. 다시 시도해 주세요." : sideAction.Value switch
+                {
+                    HomeSideActivityAction.Play => "놀아주기는 10초마다 할 수 있어요. 하루 최대 100번입니다.",
+                    HomeSideActivityAction.DailyGift => "오늘 선물은 이미 받았어요. 내일 다시 만나요!",
+                    HomeSideActivityAction.QuestReward => "오늘 함께 놀기 3회를 완료하면 보상을 받을 수 있어요.",
+                    HomeSideActivityAction.BuySnack => "비기코인이 부족하거나 간식이 가득해요.",
+                    HomeSideActivityAction.Feed => "부화한 비기몽과 간식이 필요해요. 최대 경험치는 29,000입니다.",
+                    _ => "지금은 할 수 없어요."
+                });
                 return true;
             }
             if (action == "전체 도감" && screen == "codex")
-            {
-                galleryVisible = !galleryVisible;
-                Show("codex");
-                return true;
-            }
-            if (action == "이전 공룡" || action == "다음 공룡")
-            {
-                galleryVisible = false;
-                progress.selectedArtId = 1 + ((progress.selectedArtId - 1 + (action == "다음 공룡" ? 1 : 29)) % 30);
-                if (flow.Phase == OfflineBetaPhase.PetTestSelect) flow.SelectPet(progress.selectedArtId);
-                SaveAndShow("codex");
-                return true;
-            }
-            if (action == "소리 전환" && screen == "settings")
-            {
-                progress.soundEnabled = !progress.soundEnabled;
-                AudioListener.volume = progress.soundEnabled ? 1f : 0f;
-                SaveAndShow("settings");
-                return true;
-            }
-            if (action == "아바타 바꾸기" && screen == "settings")
-            {
-                Show("avatar");
-                return true;
-            }
-            if (action == "연습 대전" && screen == "codex")
-            {
-                Activate("1:1 대전");
-                return true;
-            }
+            { galleryVisible = !galleryVisible; Show("codex"); return true; }
+            if ((action == "이전 공룡" || action == "다음 공룡") && screen == "codex")
+            { BrowseCodex(action == "다음 공룡" ? 1 : -1); Show("codex"); return true; }
+            if (action == "아바타 바꾸기" && screen == "settings") { Show("avatar"); return true; }
+            if (action == "연습 대전" && screen == "codex") { Activate("1:1 대전"); return true; }
             return false;
         }
 
-        private void SaveAndShow(string target)
+        private void BrowseCodex(int direction)
         {
-            if (!OfflineReferenceProgressStore.Save(progress))
-                OpenDialogue("저장 오류", "기기에 진행 상태를 저장하지 못했어요. 저장 공간을 확인해 주세요.");
-            else Show(target);
-        }
-
-        private void BuildCurrencyHud(bool egg)
-        {
-            if (egg)
-            {
-                var crown = Block("Game: Sample Crown", board, 424, 300, 204, 79, Cocoa);
-                Label("Game: Crown Availability", crown.transform, "연습", 0, 0, 204, 79, 31, Gold, 204, 79);
-                var coin = Block("Game: Real Egg Coins", board, 781, 299, 225, 83, Cocoa);
-                Label("Game: Coin Balance", coin.transform, progress.coins.ToString("N0"),
-                    0, 0, 225, 83, 39, Cream, 225, 83);
-            }
-            else
-            {
-                var crown = Block("Game: Sample Crown", board, 833, 263, 185, 66, Cocoa);
-                Label("Game: Crown Availability", crown.transform, "연습", 0, 0, 185, 66, 28, Gold, 185, 66);
-                var coin = Block("Game: Real Home Coins", board, 797, 452, 226, 135, Cocoa);
-                Label("Game: Coin Balance", coin.transform, progress.coins.ToString("N0") + "\\n비기코인",
-                    0, 0, 226, 135, 30, Cream, 226, 135);
-            }
-        }
-
-        private void BuildProgressHud(bool home)
-        {
-            var top = home ? 1230 : 1100;
-            var panel = Block("Game: Live Progress", board, 205, top, 615, 145, Cocoa);
-            var line = home
-                ? "Lv." + progress.Level + " " + progress.GrowthStage + "  ·  " + progress.coins.ToString("N0") + " 코인"
-                : "알 경험치 " + progress.eggExperience.ToString("N0") + " / 30,000";
-            Label("Game: Progress Value", panel.transform, line, 0, 10, 615, 63, 34, Cream);
-            Label("Game: Progress Hint", panel.transform,
-                home ? "놀아주기와 퀘스트로 함께 성장해요!" :
-                progress.CanHatch ? "부화 준비 완료 · 알을 눌러 주세요!" : "알을 닦거나 함께 놀면 경험치가 쌓여요.",
-                15, 78, 585, 48, 23, Gold);
-            if (home) return;
-            var fill = Block("Game: Egg Bar", board, 240, top + 154, 550, 22, new Color(.23f, .15f, .18f));
-            Block("Game: Egg Fill", fill.transform, 0, 0,
-                Mathf.Max(3, 550f * progress.eggExperience / OfflineReferenceProgress.HatchTarget), 22, Orange, 550, 22);
-            if (progress.CanHatch)
-                ActionButton("알 부화", board, 320, 1250, 380, 85, "알 부화하기", Gold);
+            galleryVisible = false;
+            codexPreviewArtId = 1 + ((codexPreviewArtId - 1 + direction + 30) % 30);
         }
 
         private void BuildPage(string page)
@@ -447,7 +494,7 @@ namespace Bigimong.AR
             Label("Game: Page Title", panel.transform, title, 40, 36, 750, 90, 53, Gold);
             Block("Game: Gold Separator", panel.transform, 72, 137, 686, 7, Orange, 830, 1025);
             var today = DateTime.UtcNow;
-            progress.StartDay(today);
+            hatchHomeCoordinator.ApplySideActivity(HomeSideActivityAction.DayRollover);
             var wallet = progress.coins.ToString("N0");
             switch (page)
             {
@@ -460,8 +507,8 @@ namespace Bigimong.AR
                     break;
                 case "play":
                     Label("Game: Play Status", panel.transform,
-                        progress.hatched ? "빨간 티라노와 놀기\n경험치 +200 · 비기코인 +50" :
-                        "반짝이는 알과 놀기\n알 경험치 +500",
+                        Hatched ? BigimongSpeciesCatalog.Resolve(progress.selectedArtId).KoreanName + "와 놀기\n경험치 +200 · 비기코인 +50" :
+                        "반짝이는 알과 놀기\n오늘의 놀이 기록을 쌓아요",
                         65, 251, 700, 270, 39, Cream);
                     Label("Game: Daily Play", panel.transform, "오늘 함께 논 횟수  " + progress.playsToday + " / 100",
                         65, 561, 700, 100, 31, Gold);
@@ -469,8 +516,7 @@ namespace Bigimong.AR
                     break;
                 case "gift":
                     Label("Game: Gift Status", panel.transform,
-                        "매일 한 번 받는 선물\n비기코인 +500" +
-                        (progress.hatched ? "" : "\n알 경험치 +500"),
+                        "매일 한 번 받는 선물\n비기코인 +500",
                         65, 249, 700, 285, 42, Cream);
                     ActionButton("오늘의 선물 받기", panel.transform, 105, 707, 620, 114,
                         progress.giftClaimedToday ? "오늘 수령 완료" : "오늘의 선물 받기", Gold, 830, 1025);
@@ -494,11 +540,11 @@ namespace Bigimong.AR
                     break;
                 case "codex":
                     Label("Game: Codex Selection", panel.transform,
-                        progress.selectedArtId.ToString("00") + "  " + Species[progress.selectedArtId - 1] +
+                        codexPreviewArtId.ToString("00") + "  " + BigimongSpeciesCatalog.Resolve(codexPreviewArtId).KoreanName +
                         "\n30종 · AR 연습 대전에서 체험 가능", 60, 175, 710, 153, 32, Cream);
                     var codexArt = galleryVisible
                         ? Resources.Load<Texture2D>("ReferenceUi/gallery")
-                        : Resources.Load<Texture2D>("ReferenceUi/evolution-" + progress.selectedArtId.ToString("00"));
+                        : Resources.Load<Texture2D>("ReferenceUi/evolution-" + codexPreviewArtId.ToString("00"));
                     if (codexArt != null) ImageCard("Game: 30 Dinosaurs", panel.transform, codexArt,
                         45, 342, 740, 470, 830, 1025);
                     ActionButton("이전 공룡", panel.transform, 34, 819, 232, 84, "이전", Gold, 830, 1025);
@@ -509,11 +555,11 @@ namespace Bigimong.AR
                     break;
                 case "character":
                     Label("Game: Character Info", panel.transform,
-                        "01  빨간 티라노사우루스\nLv." + progress.Level + " " + progress.GrowthStage +
+                        progress.selectedArtId.ToString("00") + " " + BigimongSpeciesCatalog.Resolve(progress.selectedArtId).KoreanName + "\nLv." + Level + " " + GrowthStage +
                         "  ·  경험치 " + progress.dragonExperience.ToString("N0") +
                         " / 29,000\n보유 간식  " + progress.snacks + "개",
                         45, 181, 740, 180, 30, Cream);
-                    var evolution = Resources.Load<Texture2D>("ReferenceUi/evolution-01");
+                    var evolution = Resources.Load<Texture2D>("ReferenceUi/evolution-" + Math.Max(1, progress.selectedArtId).ToString("00"));
                     if (evolution != null) ImageCard("Game: Three Stages", panel.transform, evolution,
                         71, 395, 688, 394, 830, 1025);
                     ActionButton("간식 주기", panel.transform, 180, 831, 470, 108, "간식 주기", Orange, 830, 1025);
@@ -536,13 +582,6 @@ namespace Bigimong.AR
             CreateReferenceCrop("Game: Avatar Cursor Repair", texture, target, source, true);
         }
 
-        private void CreateHomeIdleOverlay(Texture2D texture)
-        {
-            var dinosaur = new Rect(350f, 620f, 365f, 435f);
-            var overlay = CreateReferenceCrop("Game: Home Dinosaur Idle", texture, dinosaur, dinosaur, false);
-            overlay.AddComponent<ReferenceArtIdleMotion>().Configure(new Vector2(1.2f, 3.2f), .0045f, 1.08f, .4f);
-        }
-
         private GameObject CreateReferenceCrop(string name, Texture2D texture, Rect target, Rect source, bool mirrorX)
         {
             var obj = new GameObject(name, typeof(RectTransform), typeof(RawImage));
@@ -563,19 +602,20 @@ namespace Bigimong.AR
             noticePanel = Block("Sample Values Notice", board, 264, 4, 500, 43, Cocoa);
             var label = Label("Offline Progress Notice", noticePanel.transform,
                 "오프라인 게임 · 저장된 진행 상태", 0, 0, 500, 43, 18, Color.white, 500, 43);
-            statusNotice = label.GetComponent<Text>();
+            statusNotice = label.GetComponent<TMP_Text>();
         }
 
         private void CreateDialogue()
         {
             dialogue = Block("Reference Screen Destination", board, 0, 0, Width, Height, Cocoa);
-            dialogueTitle = Label("Destination Name", dialogue.transform, "", 110, 470, 810, 110, 48, Gold).GetComponent<Text>();
+            dialogue.GetComponent<Image>().raycastTarget = true;
+            dialogueTitle = Label("Destination Name", dialogue.transform, "", 110, 470, 810, 110, 48, Gold).GetComponent<TMP_Text>();
             dialogueBody = Label("Destination Description", dialogue.transform, "",
-                120, 595, 790, 255, 29, Cream).GetComponent<Text>();
+                120, 595, 790, 255, 29, Cream).GetComponent<TMP_Text>();
             var button = ActionButton("닫기", dialogue.transform, 350, 910, 330, 120,
                 "돌아가기", Gold);
             button.GetComponent<Button>().onClick.RemoveAllListeners();
-            button.GetComponent<Button>().onClick.AddListener(() => dialogue.SetActive(false));
+            button.GetComponent<Button>().onClick.AddListener(CloseDialogue);
             dialogue.SetActive(false);
         }
 
@@ -586,23 +626,24 @@ namespace Bigimong.AR
             obj.transform.SetParent(parent, false);
             Box(obj.GetComponent<RectTransform>(), x, y, w, h, baseW, baseH);
             obj.GetComponent<Image>().color = color;
+            obj.GetComponent<Image>().raycastTarget = false;
             return obj;
         }
 
         private static GameObject Label(string name, Transform parent, string value, float x, float y,
             float w, float h, int fontSize, Color color, float baseW = Width, float baseH = Height)
         {
-            var obj = new GameObject(name, typeof(RectTransform), typeof(Text));
+            var obj = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
             obj.transform.SetParent(parent, false);
             Box(obj.GetComponent<RectTransform>(), x, y, w, h, baseW, baseH);
-            var label = obj.GetComponent<Text>();
-            label.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            var label = obj.GetComponent<TMP_Text>();
+            BigimongTypographyTheme.Shared.Apply(label, fontSize >= 37 ? BigimongTextRole.ACTION : BigimongTextRole.COUNTER);
             label.fontSize = fontSize;
-            label.color = color;
+            label.color = fontSize >= 37 ? Cream : color;
             label.text = value;
-            label.alignment = TextAnchor.MiddleCenter;
-            label.horizontalOverflow = HorizontalWrapMode.Wrap;
-            label.verticalOverflow = VerticalWrapMode.Overflow;
+            label.alignment = TextAlignmentOptions.Center;
+            label.enableWordWrapping = true;
+            label.overflowMode = TextOverflowModes.Overflow;
             label.raycastTarget = false;
             return obj;
         }
@@ -618,6 +659,7 @@ namespace Bigimong.AR
             string caption, Color color, float baseW = Width, float baseH = Height)
         {
             var button = Block("Game: Button " + action, parent, x, y, w, h, color, baseW, baseH);
+            button.GetComponent<Image>().raycastTarget = true;
             button.AddComponent<Button>().onClick.AddListener(() => Activate(action));
             button.AddComponent<ButtonPressMotion>();
             Label("Game: Button Label", button.transform, caption, 0, 0, w, h, 37,
@@ -640,10 +682,20 @@ namespace Bigimong.AR
 
         private void OpenDialogue(string title, string description)
         {
+            dialogueFromHome = hatchHomeView.IsVisible;
+            if (dialogueFromHome) { hatchHomeView.Hide(); canvas.enabled = true; canvasGroup.interactable = canvasGroup.blocksRaycasts = true; }
             dialogueTitle.text = title;
             dialogueBody.text = description;
             dialogue.SetActive(true);
             dialogue.transform.SetAsLastSibling();
+            if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(dialogue.GetComponentInChildren<Button>().gameObject);
+        }
+
+        private void CloseDialogue()
+        {
+            dialogue.SetActive(false);
+            if (dialogueFromHome) { dialogueFromHome = false; ShowHome(); }
+            else FocusFirstControl();
         }
     }
 }

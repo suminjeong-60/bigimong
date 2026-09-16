@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 const read = path => readFileSync(new URL(`../unity/BigimongAR/Assets/BigimongAR/${path}`, import.meta.url), 'utf8');
-test('the shipped Unity scene uses all five reference screens and real touch routing', () => {
+test('the shipped Unity scene retains five references and delegates playable home to 3D', () => {
   const scene = read('Editor/BigimongArSceneBuilder.cs');
   const build = read('Editor/BigimongAndroidBuild.cs');
   const navigation = read('Scripts/BigimongReferenceUi.cs');
@@ -15,6 +15,12 @@ test('the shipped Unity scene uses all five reference screens and real touch rou
     assert.ok(navigation.includes(action), `missing ${action}`);
   assert.match(navigation, /Resources\.Load<Texture2D>/);
   assert.match(navigation, /button\.onClick\.AddListener/);
+  assert.match(navigation, /hatchHomeView\.Show\(\)/);
+  assert.match(navigation, /target ===? "egg" \|\| target ===? "home"/);
+  assert.doesNotMatch(navigation, /OfflineReferenceProgress|\.PolishEgg\(|\.Hatch\(/);
+  assert.match(navigation, /codexPreviewArtId/);
+  assert.doesNotMatch(navigation, /progress\.selectedArtId\s*=/);
+  assert.doesNotMatch(navigation, /빨간 티라노와 놀기/);
   assert.match(importer, /TextureImporterNPOTScale\.None/);
   assert.match(importer, /Resources\/ReferenceUi\//);
 });
@@ -35,15 +41,14 @@ test('every generated button has shared tactile press motion', () => {
   assert.match(motion, /transform\.localScale = Vector3\.one/);
 });
 
-test('avatar cursor repair and home idle layers never intercept navigation taps', () => {
+test('avatar cursor repair remains non-blocking and 2D home subject overlays are gone', () => {
   const navigation = read('Scripts/BigimongReferenceUi.cs');
   const idle = read('Scripts/ReferenceArtIdleMotion.cs');
 
   assert.match(navigation, /CreateAvatarCursorRepair/);
   assert.match(navigation, /Game: Avatar Cursor Repair/);
   assert.match(navigation, /new Rect\(\.*/);
-  assert.match(navigation, /CreateHomeIdleOverlay/);
-  assert.match(navigation, /Game: Home Dinosaur Idle/);
+  assert.doesNotMatch(navigation, /CreateHomeIdleOverlay|Game: Home Dinosaur Idle/);
   assert.match(navigation, /raycastTarget = false/);
   assert.match(idle, /Time\.unscaledTime/);
   assert.match(idle, /basePosition/);

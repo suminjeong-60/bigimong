@@ -2,18 +2,19 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 namespace Bigimong.AR
 {
     public sealed class ArBattleHud : MonoBehaviour
     {
         [SerializeField] private ArBattleNativeBridge bridge;
-        [SerializeField] private Text countdownText;
-        [SerializeField] private Text playerAHpText;
-        [SerializeField] private Text playerBHpText;
+        [SerializeField] private TMP_Text countdownText;
+        [SerializeField] private TMP_Text playerAHpText;
+        [SerializeField] private TMP_Text playerBHpText;
         [SerializeField] private Image playerAHpFill;
         [SerializeField] private Image playerBHpFill;
-        [SerializeField] private Text roundStatusText;
+        [SerializeField] private TMP_Text roundStatusText;
         [SerializeField] private Button leftButton;
         [SerializeField] private Button centerButton;
         [SerializeField] private Button rightButton;
@@ -21,7 +22,7 @@ namespace Bigimong.AR
         [SerializeField] private Button surrenderButton;
         [SerializeField] private RectTransform safeArea;
         [SerializeField] private Image impactFlash;
-        [SerializeField] private Text betaBadge;
+        [SerializeField] private TMP_Text betaBadge;
         private double remainingAtStartMilliseconds;
         private float turnStartedAt;
         private bool submitted;

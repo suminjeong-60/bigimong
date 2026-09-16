@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using TMPro;
 
 namespace Bigimong.AR
 {
@@ -16,10 +17,10 @@ namespace Bigimong.AR
         [SerializeField] private RectTransform safeArea;
         [SerializeField] private RectTransform editorEntrySafeArea;
         [SerializeField] private Transform previewAnchor;
-        [SerializeField] private InputField nameInput;
-        [SerializeField] private Text previewNameText;
-        [SerializeField] private Text categoryLabel;
-        [SerializeField] private Text valueLabel;
+        [SerializeField] private TMP_InputField nameInput;
+        [SerializeField] private TMP_Text previewNameText;
+        [SerializeField] private TMP_Text categoryLabel;
+        [SerializeField] private TMP_Text valueLabel;
         [SerializeField] private Button previousButton;
         [SerializeField] private Button nextButton;
         [SerializeField] private Button masculineButton;

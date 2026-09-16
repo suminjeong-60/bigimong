@@ -4,6 +4,7 @@ using System.Reflection;
 using Bigimong.AR;
 using UnityEngine;
 using UnityEngine.UI;
+using TMPro;
 
 namespace Bigimong.AR.EditorChecks
 {
@@ -36,13 +37,13 @@ namespace Bigimong.AR.EditorChecks
             var surrenderButton = Field<Button>(hud, "surrenderButton");
             Require(surrenderButton != null && surrenderButton.GetComponent<ButtonPressMotion>() != null,
                 "surrenderButton and tactile motion missing");
-            Require(surrenderButton.transform.Find("Label")?.GetComponent<Text>()?.text == "기권",
+            Require(surrenderButton.transform.Find("Label")?.GetComponent<TMP_Text>()?.text == "기권",
                 "surrenderButton label wrong");
             foreach (var (name, label) in new[] { ("Left", "←"), ("Center", "↑"), ("Right", "→") })
             {
                 var button = safe.Find(name)?.GetComponent<Button>();
                 Require(button != null && button.targetGraphic is CircularButtonGraphic, $"{name} circle missing");
-                var arrow = button.transform.Find("Arrow")?.GetComponent<Text>();
+                var arrow = button.transform.Find("Arrow")?.GetComponent<TMP_Text>();
                 Require(arrow != null && arrow.text == label, $"{name} direction wrong");
             }
             foreach (var field in new[] { "petCanvas", "encounterCanvas", "scanCanvas", "resultCanvas" })

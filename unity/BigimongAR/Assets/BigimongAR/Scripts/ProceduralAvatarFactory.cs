@@ -19,14 +19,14 @@ namespace Bigimong.AR
         private static readonly float[] BrowCurves = { 0.00f, 0.04f, -0.035f, 0.065f, -0.06f, 0.09f };
         private static readonly Dictionary<ulong, Material> SharedMaterials = new Dictionary<ulong, Material>();
 
-        public static GameObject Create(AvatarProfile profile)
+        public static GameObject Create(AvatarProfile profile, bool includeSummoningMedallion = true)
         {
             var root = new GameObject("AvatarRoot");
-            Apply(root, profile);
+            Apply(root, profile, includeSummoningMedallion);
             return root;
         }
 
-        public static void Apply(GameObject avatarRoot, AvatarProfile profile)
+        public static void Apply(GameObject avatarRoot, AvatarProfile profile, bool includeSummoningMedallion = true)
         {
             if (avatarRoot == null)
                 return;
@@ -55,7 +55,7 @@ namespace Bigimong.AR
             CreateFace(avatarRoot.transform, headScale, skin, cheek, smile);
             CreateEyebrows(avatarRoot.transform, profile.eyebrowId, hair, headScale);
             CreateHair(avatarRoot.transform, profile.hairStyleId, hair, headScale);
-            CreateSummoningMedallion(avatarRoot.transform, gold);
+            if (includeSummoningMedallion) CreateSummoningMedallion(avatarRoot.transform, gold);
             var cosmeticRoot = new GameObject("CosmeticRoot");
             cosmeticRoot.transform.SetParent(avatarRoot.transform, false);
         }

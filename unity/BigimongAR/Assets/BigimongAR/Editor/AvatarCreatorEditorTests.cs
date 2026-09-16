@@ -6,6 +6,7 @@ using Bigimong.AR;
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using UnityEngine.UI;
+using TMPro;
 
 namespace Bigimong.AR.EditorChecks
 {
@@ -271,11 +272,13 @@ namespace Bigimong.AR.EditorChecks
             return child.GetComponent<RectTransform>();
         }
 
-        private static Text TextChild(Transform parent, string name)
+        private static TMP_Text TextChild(Transform parent, string name)
         {
-            var child = new GameObject(name, typeof(RectTransform), typeof(Text));
+            var child = new GameObject(name, typeof(RectTransform), typeof(TextMeshProUGUI));
             child.transform.SetParent(parent, false);
-            return child.GetComponent<Text>();
+            var text = child.GetComponent<TMP_Text>();
+            BigimongTypographyTheme.Shared.Apply(text, BigimongTextRole.BODY);
+            return text;
         }
 
         private static Button ButtonChild(Transform parent, string name)
@@ -285,12 +288,13 @@ namespace Bigimong.AR.EditorChecks
             return child.GetComponent<Button>();
         }
 
-        private static InputField InputChild(Transform parent, string name)
+        private static TMP_InputField InputChild(Transform parent, string name)
         {
-            var child = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(InputField));
+            var child = new GameObject(name, typeof(RectTransform), typeof(Image), typeof(TMP_InputField));
             child.transform.SetParent(parent, false);
             var text = TextChild(child.transform, "Text");
-            var input = child.GetComponent<InputField>();
+            var input = child.GetComponent<TMP_InputField>();
+            input.textViewport = child.GetComponent<RectTransform>();
             input.textComponent = text;
             return input;
         }
