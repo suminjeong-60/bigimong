@@ -204,12 +204,17 @@ namespace Bigimong.AR.EditorChecks
                 }
                 target.Create();
                 var camera = cameraObject.GetComponent<Camera>(); camera.enabled = false;
+                camera.targetTexture = target;
+                // AR/XR projects default new cameras to Both Eyes. An offscreen proof must be mono;
+                // otherwise one selected LOD is duplicated into the two horizontal eye viewports.
+                camera.stereoTargetEye = StereoTargetEyeMask.None;
+                camera.rect = new Rect(0f, 0f, 1f, 1f);
                 camera.orthographic = true; camera.orthographicSize = 1f; camera.aspect = 2f;
                 camera.clearFlags = CameraClearFlags.SolidColor; camera.backgroundColor = Color.black;
                 camera.cullingMask = 1 << subject.layer;
                 camera.transform.position = subject.transform.position + Vector3.back * 5f;
                 camera.transform.rotation = Quaternion.identity;
-                camera.targetTexture = target;
+                camera.ResetProjectionMatrix();
                 camera.Render();
                 RenderTexture.active = target;
                 pixels.ReadPixels(new Rect(0, 0, 64, 32), 0, 0); pixels.Apply();
