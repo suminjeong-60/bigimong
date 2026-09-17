@@ -191,8 +191,17 @@ namespace Bigimong.AR.EditorChecks
             var target = new RenderTexture(64, 32, 24);
             var pixels = new Texture2D(64, 32, TextureFormat.RGBA32, false);
             var previous = RenderTexture.active;
+            var stageRenderers = subject.transform.root.GetComponentsInChildren<Renderer>(true);
+            var rendererStates = new bool[stageRenderers.Length];
             try
             {
+                // The proof camera shares the HomeStage layer with its studio backdrop. Isolate the
+                // admitted subject so the ground-shadow quad cannot satisfy either LOD pixel region.
+                for (var i = 0; i < stageRenderers.Length; i++)
+                {
+                    rendererStates[i] = stageRenderers[i].enabled;
+                    if (!stageRenderers[i].transform.IsChildOf(subject.transform)) stageRenderers[i].enabled = false;
+                }
                 target.Create();
                 var camera = cameraObject.GetComponent<Camera>(); camera.enabled = false;
                 camera.orthographic = true; camera.orthographicSize = 1f; camera.aspect = 2f;
@@ -207,25 +216,49 @@ namespace Bigimong.AR.EditorChecks
                 var left = pixels.GetPixel(20, 16).r;
                 var right = pixels.GetPixel(44, 16).r;
                 var leftBright = 0; var rightBright = 0; var leftMax = 0f; var rightMax = 0f;
+                var leftMinX = 64; var leftMaxX = -1; var leftMinY = 32; var leftMaxY = -1;
+                var rightMinX = 64; var rightMaxX = -1; var rightMinY = 32; var rightMaxY = -1;
                 for (var y = 0; y < 32; y++)
                     for (var x = 0; x < 64; x++)
                     {
                         var red = pixels.GetPixel(x, y).r;
-                        if (x < 32) { if (red > .5f) leftBright++; leftMax = Mathf.Max(leftMax, red); }
-                        else { if (red > .5f) rightBright++; rightMax = Mathf.Max(rightMax, red); }
+                        if (x < 32)
+                        {
+                            if (red > .5f)
+                            {
+                                leftBright++; leftMinX = Mathf.Min(leftMinX, x); leftMaxX = Mathf.Max(leftMaxX, x);
+                                leftMinY = Mathf.Min(leftMinY, y); leftMaxY = Mathf.Max(leftMaxY, y);
+                            }
+                            leftMax = Mathf.Max(leftMax, red);
+                        }
+                        else
+                        {
+                            if (red > .5f)
+                            {
+                                rightBright++; rightMinX = Mathf.Min(rightMinX, x); rightMaxX = Mathf.Max(rightMaxX, x);
+                                rightMinY = Mathf.Min(rightMinY, y); rightMaxY = Mathf.Max(rightMaxY, y);
+                            }
+                            rightMax = Mathf.Max(rightMax, red);
+                        }
                     }
                 var group = subject.GetComponent<LODGroup>();
                 var lods = group.GetLODs();
                 var highRenderer = lods[0].renderers[0]; var lowRenderer = lods[1].renderers[0];
-                Require(left > .5f == high && right > .5f == !high,
+                var highScreen = camera.WorldToScreenPoint(highRenderer.bounds.center);
+                var lowScreen = camera.WorldToScreenPoint(lowRenderer.bounds.center);
+                Require(leftBright > 0 == high && rightBright > 0 == !high,
                     $"actual rendered exclusive LOD pixels: expectedHigh={high}, samples={left:F3}/{right:F3}, " +
                     $"bright={leftBright}/{rightBright}, max={leftMax:F3}/{rightMax:F3}, " +
+                    $"boxes={leftMinX},{leftMinY}-{leftMaxX},{leftMaxY}/{rightMinX},{rightMinY}-{rightMaxX},{rightMaxY}, " +
+                    $"centers={highScreen.x:F2},{highScreen.y:F2}/{lowScreen.x:F2},{lowScreen.y:F2}, " +
                     $"subjectActive={subject.activeInHierarchy}, groupActive={group.enabled && group.gameObject.activeInHierarchy}, " +
                     $"renderers={highRenderer.enabled}:{highRenderer.gameObject.activeInHierarchy}/" +
                     $"{lowRenderer.enabled}:{lowRenderer.gameObject.activeInHierarchy}; deleting ForceLOD must fail, not just a selected-index assertion");
             }
             finally
             {
+                for (var i = 0; i < stageRenderers.Length; i++)
+                    if (stageRenderers[i] != null) stageRenderers[i].enabled = rendererStates[i];
                 RenderTexture.active = previous; target.Release();
                 UnityEngine.Object.DestroyImmediate(cameraObject); UnityEngine.Object.DestroyImmediate(target); UnityEngine.Object.DestroyImmediate(pixels);
             }
