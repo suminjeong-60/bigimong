@@ -19,7 +19,10 @@ test("home typography, side activity and scene behavior gates are wired", () => 
   for (const check of ["LiteralPhasePresentation", "SideActivityRules", "FailedSaveKeepsSnapshot", "CodexIsPreviewOnly", "PresentationBindings"])
     assert.ok(checks.includes(check), check);
   assert.ok(read("Editor/BigimongAndroidBuild.cs").includes("HatchHomeSceneEditorChecks.RunSceneChecks()"));
-  assert.ok(read("Editor/BigimongFontAssetBuilder.cs").includes("TMP_FontAsset.CreateFontAsset"));
+  const fontBuilder = read("Editor/BigimongFontAssetBuilder.cs");
+  assert.ok(fontBuilder.includes("TMP_FontAsset.CreateFontAsset"));
+  assert.ok(fontBuilder.includes("!font.HasCharacter(character)"), "repeat font preparation adds only unresolved glyphs");
+  assert.ok(fontBuilder.includes("missing glyphs after population"), "font preparation verifies the serialized result");
   assert.match(read("Scripts/HomeSideActivityService.cs"), /Snapshot = snapshot\?\.Clone\(\)/);
   assert.ok(read("Scripts/BigimongReferenceUi.cs").includes("retainedOverlayGroups"));
   assert.match(read("Scripts/BigimongReferenceUi.cs"), /if \(!homeInputOwned\) return;/);

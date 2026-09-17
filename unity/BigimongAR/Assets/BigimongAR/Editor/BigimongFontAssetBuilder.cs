@@ -81,8 +81,14 @@ namespace Bigimong.Editor
                 foreach (var atlas in font.atlasTextures) AssetDatabase.AddObjectToAsset(atlas, font);
             }
             font.atlasPopulationMode = AtlasPopulationMode.Dynamic;
-            if (!font.TryAddCharacters(glyphs, out string missing))
+            // CreateScene can prepare typography after the build entry point already did. Keep that
+            // second call idempotent by rasterizing only characters not already serialized.
+            var required = new string(glyphs.Where(character => !font.HasCharacter(character)).ToArray());
+            if (required.Length > 0 && !font.TryAddCharacters(required, out string missing))
                 throw new InvalidOperationException("Restricted Korean atlas missing glyphs: " + missing);
+            var unresolved = new string(glyphs.Where(character => !font.HasCharacter(character)).ToArray());
+            if (unresolved.Length > 0)
+                throw new InvalidOperationException("Restricted Korean atlas missing glyphs after population: " + unresolved);
             font.atlasPopulationMode = AtlasPopulationMode.Static;
             font.isMultiAtlasTexturesEnabled = false;
             EditorUtility.SetDirty(font);
