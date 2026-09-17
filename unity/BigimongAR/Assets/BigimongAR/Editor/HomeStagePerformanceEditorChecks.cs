@@ -204,8 +204,25 @@ namespace Bigimong.AR.EditorChecks
                 camera.Render();
                 RenderTexture.active = target;
                 pixels.ReadPixels(new Rect(0, 0, 64, 32), 0, 0); pixels.Apply();
-                Require(pixels.GetPixel(20, 16).r > .5f == high && pixels.GetPixel(44, 16).r > .5f == !high,
-                    "actual rendered exclusive LOD pixels: deleting ForceLOD must fail, not just a selected-index assertion");
+                var left = pixels.GetPixel(20, 16).r;
+                var right = pixels.GetPixel(44, 16).r;
+                var leftBright = 0; var rightBright = 0; var leftMax = 0f; var rightMax = 0f;
+                for (var y = 0; y < 32; y++)
+                    for (var x = 0; x < 64; x++)
+                    {
+                        var red = pixels.GetPixel(x, y).r;
+                        if (x < 32) { if (red > .5f) leftBright++; leftMax = Mathf.Max(leftMax, red); }
+                        else { if (red > .5f) rightBright++; rightMax = Mathf.Max(rightMax, red); }
+                    }
+                var group = subject.GetComponent<LODGroup>();
+                var lods = group.GetLODs();
+                var highRenderer = lods[0].renderers[0]; var lowRenderer = lods[1].renderers[0];
+                Require(left > .5f == high && right > .5f == !high,
+                    $"actual rendered exclusive LOD pixels: expectedHigh={high}, samples={left:F3}/{right:F3}, " +
+                    $"bright={leftBright}/{rightBright}, max={leftMax:F3}/{rightMax:F3}, " +
+                    $"subjectActive={subject.activeInHierarchy}, groupActive={group.isActiveAndEnabled}, " +
+                    $"renderers={highRenderer.enabled}:{highRenderer.gameObject.activeInHierarchy}/" +
+                    $"{lowRenderer.enabled}:{lowRenderer.gameObject.activeInHierarchy}; deleting ForceLOD must fail, not just a selected-index assertion");
             }
             finally
             {
