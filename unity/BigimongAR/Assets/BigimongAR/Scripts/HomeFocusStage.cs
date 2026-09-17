@@ -204,8 +204,9 @@ namespace Bigimong.AR
                 pendingFactory = null;
                 ReleaseSlot(previous);
                 if (run != switchGeneration) yield break;
-                quality?.CommitSubject(admission);
                 activeSlot.SetActive(true);
+                // ForceLOD only applies while the admitted group is active in the hierarchy.
+                quality?.CommitSubject(admission);
             }
             finally { preparingCandidate = false; }
             if (run != switchGeneration) yield break;
