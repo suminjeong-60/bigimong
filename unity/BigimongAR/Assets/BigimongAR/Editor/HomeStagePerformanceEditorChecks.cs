@@ -140,8 +140,10 @@ namespace Bigimong.AR.EditorChecks
             mesh.triangles = new[] { 0, 1, 2, 0, 2, 3, 0, 1, 2, 0, 2, 3, 0, 1, 2, 0, 2, 3 }; // 6 / 12 = 50%.
             mesh.RecalculateBounds();
             low.GetComponent<MeshFilter>().sharedMesh = mesh;
-            var material = new Material(Shader.Find("Sprites/Default")) { color = Color.white };
-            low.GetComponent<Renderer>().sharedMaterial = high.GetComponent<Renderer>().sharedMaterial = material;
+            var highMaterial = new Material(Shader.Find("Sprites/Default")) { color = Color.red };
+            var lowMaterial = new Material(Shader.Find("Sprites/Default")) { color = Color.green };
+            high.GetComponent<Renderer>().sharedMaterial = highMaterial;
+            low.GetComponent<Renderer>().sharedMaterial = lowMaterial;
             high.transform.localPosition = Vector3.left * .75f;
             low.transform.localPosition = Vector3.right * .75f;
             var group = root.AddComponent<LODGroup>();
@@ -182,7 +184,12 @@ namespace Bigimong.AR.EditorChecks
                 quality.ApplyTier(HomeQualityTier.LOW);
                 Require(quality.ActiveLod == 0, "unvalidated 8% asset cannot become LOD1");
             }
-            finally { stage.DestroyActiveSubject(); UnityEngine.Object.DestroyImmediate(mesh); UnityEngine.Object.DestroyImmediate(controller); UnityEngine.Object.DestroyImmediate(material); }
+            finally
+            {
+                stage.DestroyActiveSubject();
+                UnityEngine.Object.DestroyImmediate(mesh); UnityEngine.Object.DestroyImmediate(controller);
+                UnityEngine.Object.DestroyImmediate(highMaterial); UnityEngine.Object.DestroyImmediate(lowMaterial);
+            }
         }
 
         private static void CaptureLodPixels(GameObject subject, bool high)
@@ -196,7 +203,7 @@ namespace Bigimong.AR.EditorChecks
             try
             {
                 // The proof camera shares the HomeStage layer with its studio backdrop. Isolate the
-                // admitted subject so the ground-shadow quad cannot satisfy either LOD pixel region.
+                // admitted subject so studio geometry cannot affect the LOD color classification.
                 for (var i = 0; i < stageRenderers.Length; i++)
                 {
                     rendererStates[i] = stageRenderers[i].enabled;
@@ -205,8 +212,7 @@ namespace Bigimong.AR.EditorChecks
                 target.Create();
                 var camera = cameraObject.GetComponent<Camera>(); camera.enabled = false;
                 camera.targetTexture = target;
-                // AR/XR projects default new cameras to Both Eyes. An offscreen proof must be mono;
-                // otherwise one selected LOD is duplicated into the two horizontal eye viewports.
+                // Keep this offscreen proof independent of the AR/XR eye layout.
                 camera.stereoTargetEye = StereoTargetEyeMask.None;
                 camera.rect = new Rect(0f, 0f, 1f, 1f);
                 camera.orthographic = true; camera.orthographicSize = 1f; camera.aspect = 2f;
@@ -218,43 +224,23 @@ namespace Bigimong.AR.EditorChecks
                 camera.Render();
                 RenderTexture.active = target;
                 pixels.ReadPixels(new Rect(0, 0, 64, 32), 0, 0); pixels.Apply();
-                var left = pixels.GetPixel(20, 16).r;
-                var right = pixels.GetPixel(44, 16).r;
-                var leftBright = 0; var rightBright = 0; var leftMax = 0f; var rightMax = 0f;
-                var leftMinX = 64; var leftMaxX = -1; var leftMinY = 32; var leftMaxY = -1;
-                var rightMinX = 64; var rightMaxX = -1; var rightMinY = 32; var rightMaxY = -1;
+                var highPixels = 0; var lowPixels = 0; var maxRed = 0f; var maxGreen = 0f;
                 for (var y = 0; y < 32; y++)
                     for (var x = 0; x < 64; x++)
                     {
-                        var red = pixels.GetPixel(x, y).r;
-                        if (x < 32)
-                        {
-                            if (red > .5f)
-                            {
-                                leftBright++; leftMinX = Mathf.Min(leftMinX, x); leftMaxX = Mathf.Max(leftMaxX, x);
-                                leftMinY = Mathf.Min(leftMinY, y); leftMaxY = Mathf.Max(leftMaxY, y);
-                            }
-                            leftMax = Mathf.Max(leftMax, red);
-                        }
-                        else
-                        {
-                            if (red > .5f)
-                            {
-                                rightBright++; rightMinX = Mathf.Min(rightMinX, x); rightMaxX = Mathf.Max(rightMaxX, x);
-                                rightMinY = Mathf.Min(rightMinY, y); rightMaxY = Mathf.Max(rightMaxY, y);
-                            }
-                            rightMax = Mathf.Max(rightMax, red);
-                        }
+                        var color = pixels.GetPixel(x, y);
+                        if (color.r > .5f && color.g < .25f) highPixels++;
+                        if (color.g > .5f && color.r < .25f) lowPixels++;
+                        maxRed = Mathf.Max(maxRed, color.r); maxGreen = Mathf.Max(maxGreen, color.g);
                     }
                 var group = subject.GetComponent<LODGroup>();
                 var lods = group.GetLODs();
                 var highRenderer = lods[0].renderers[0]; var lowRenderer = lods[1].renderers[0];
                 var highScreen = camera.WorldToScreenPoint(highRenderer.bounds.center);
                 var lowScreen = camera.WorldToScreenPoint(lowRenderer.bounds.center);
-                Require(leftBright > 0 == high && rightBright > 0 == !high,
-                    $"actual rendered exclusive LOD pixels: expectedHigh={high}, samples={left:F3}/{right:F3}, " +
-                    $"bright={leftBright}/{rightBright}, max={leftMax:F3}/{rightMax:F3}, " +
-                    $"boxes={leftMinX},{leftMinY}-{leftMaxX},{leftMaxY}/{rightMinX},{rightMinY}-{rightMaxX},{rightMaxY}, " +
+                Require(highPixels > 0 == high && lowPixels > 0 == !high,
+                    $"actual rendered exclusive LOD colors: expectedHigh={high}, colored={highPixels}/{lowPixels}, " +
+                    $"max={maxRed:F3}/{maxGreen:F3}, " +
                     $"centers={highScreen.x:F2},{highScreen.y:F2}/{lowScreen.x:F2},{lowScreen.y:F2}, " +
                     $"subjectActive={subject.activeInHierarchy}, groupActive={group.enabled && group.gameObject.activeInHierarchy}, " +
                     $"renderers={highRenderer.enabled}:{highRenderer.gameObject.activeInHierarchy}/" +
