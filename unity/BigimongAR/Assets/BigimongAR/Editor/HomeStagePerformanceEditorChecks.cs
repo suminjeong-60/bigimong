@@ -220,7 +220,7 @@ namespace Bigimong.AR.EditorChecks
                 Require(left > .5f == high && right > .5f == !high,
                     $"actual rendered exclusive LOD pixels: expectedHigh={high}, samples={left:F3}/{right:F3}, " +
                     $"bright={leftBright}/{rightBright}, max={leftMax:F3}/{rightMax:F3}, " +
-                    $"subjectActive={subject.activeInHierarchy}, groupActive={group.isActiveAndEnabled}, " +
+                    $"subjectActive={subject.activeInHierarchy}, groupActive={group.enabled && group.gameObject.activeInHierarchy}, " +
                     $"renderers={highRenderer.enabled}:{highRenderer.gameObject.activeInHierarchy}/" +
                     $"{lowRenderer.enabled}:{lowRenderer.gameObject.activeInHierarchy}; deleting ForceLOD must fail, not just a selected-index assertion");
             }
