@@ -50,7 +50,7 @@ namespace Bigimong.Editor
             var archive = package == null ? null : Directory.GetFiles(package.resolvedPath,
                 "TMP Essential Resources.unitypackage", SearchOption.AllDirectories).FirstOrDefault();
             if (archive == null) throw new InvalidOperationException("Installed Unity package lacks TMP Essential Resources.");
-            AssetDatabase.ImportPackage(archive, false);
+            TMP_PackageResourceImporter.ImportResources(true, false, false);
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
             if (Resources.Load<TMP_Settings>("TMP Settings") == null || Shader.Find("TextMeshPro/Distance Field") == null)
                 throw new InvalidOperationException("TMP Essential Resources did not import successfully.");
