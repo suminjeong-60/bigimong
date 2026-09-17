@@ -44,16 +44,12 @@ namespace Bigimong.Editor
 
         private static void PrepareEssentialResources()
         {
-            if (Resources.Load<TMP_Settings>("TMP Settings") != null && Shader.Find("TextMeshPro/Distance Field") != null) return;
-            // Use the installed Unity/uGUI package only; no network, guessed package version, or modal import dialog.
-            var package = UnityEditor.PackageManager.PackageInfo.FindForAssembly(typeof(TMP_Text).Assembly);
-            var archive = package == null ? null : Directory.GetFiles(package.resolvedPath,
-                "TMP Essential Resources.unitypackage", SearchOption.AllDirectories).FirstOrDefault();
-            if (archive == null) throw new InvalidOperationException("Installed Unity package lacks TMP Essential Resources.");
-            TMP_PackageResourceImporter.ImportResources(true, false, false);
             AssetDatabase.Refresh(ImportAssetOptions.ForceSynchronousImport);
-            if (Resources.Load<TMP_Settings>("TMP Settings") == null || Shader.Find("TextMeshPro/Distance Field") == null)
-                throw new InvalidOperationException("TMP Essential Resources did not import successfully.");
+            var missing = new List<string>();
+            if (Resources.Load<TMP_Settings>("TMP Settings") == null) missing.Add("TMP Settings");
+            if (Shader.Find("TextMeshPro/Mobile/Distance Field") == null) missing.Add("mobile SDF shader");
+            if (missing.Count > 0)
+                throw new InvalidOperationException("Missing checked-in TMP build resources: " + string.Join(", ", missing));
         }
 
         public static string ShippedGlyphs()

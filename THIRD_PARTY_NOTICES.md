@@ -17,6 +17,13 @@ License: SIL Open Font License 1.1 (SPDX `OFL-1.1`); see `unity/BigimongAR/Asset
 Both files were verified with `file` as TrueType font data (19 tables), not HTML/error payloads.
 Unity generates restricted-glyph TMP atlases and shared material presets from these unmodified sources before scene construction.
 
+## TextMesh Pro essential resources — Unity Companion License
+
+The minimal checked-in TMP settings, line-breaking data, default style sheet, and mobile SDF shader under
+`unity/BigimongAR/Assets/TextMesh Pro` come from Unity Technologies' uGUI 2.0.0 package resources.
+They are licensed under the Unity Companion License for use with Unity-dependent projects:
+https://unity.com/legal/licenses/unity-companion-license
+
 ## Elemental Sandbox references
 
 Bigimong's Unity procedural skill effects are informed by the interaction and code-generated VFX concepts demonstrated in:
