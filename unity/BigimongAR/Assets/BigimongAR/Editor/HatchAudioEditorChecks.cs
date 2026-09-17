@@ -30,10 +30,11 @@ namespace Bigimong.AR.EditorChecks
 
             // Clone the actual serialized scene components, then exercise the runtime load callback.
             var copy = UnityEngine.Object.Instantiate(view.gameObject);
+            HatchAudioBinding copiedBinding = null;
             AudioClip rock = null, crack = null, burst = null;
             try
             {
-                var copiedBinding = copy.GetComponent<HatchAudioBinding>();
+                copiedBinding = copy.GetComponent<HatchAudioBinding>();
                 Invoke(copiedBinding, "Awake");
                 var director = copy.GetComponent<HatchSequenceDirector>();
                 var copiedSource = copy.GetComponent<AudioSource>();
@@ -45,7 +46,11 @@ namespace Bigimong.AR.EditorChecks
                     "cues are created on load, not unsaved editor-only asset references");
                 Require(!copiedSource.isPlaying && copiedSource.clip == null, "binding alone never plays a cue");
             }
-            finally { UnityEngine.Object.DestroyImmediate(copy); }
+            finally
+            {
+                if (copiedBinding != null) Invoke(copiedBinding, "OnDestroy");
+                UnityEngine.Object.DestroyImmediate(copy);
+            }
             Require(rock == null && crack == null && burst == null, "unloading the runtime owner destroys all three generated clips");
         }
 
@@ -69,6 +74,8 @@ namespace Bigimong.AR.EditorChecks
             f.Source.mute = true; f.Source.volume = .37f;
             f.Binding.EnsureBound();
             Require(f.Source.mute && f.Source.volume == .37f, "rebinding never resets caller/platform audio preferences");
+            // Edit-mode MonoBehaviours do not receive runtime lifecycle messages automatically.
+            Invoke(f.Binding, "OnDestroy");
             UnityEngine.Object.DestroyImmediate(f.Binding);
             Require(rock == null && crack == null && burst == null && Field<AudioSource>(f.Sequence, "audioSource") == null,
                 "audio owner destruction releases generated clips and clears director bindings");
@@ -167,7 +174,13 @@ namespace Bigimong.AR.EditorChecks
                 Coordinator.Configure(Store, new HatchProgressService(Store, clock), new HatchSelectionService(Store, Random), null, Sequence, null, clock);
                 Coordinator.Initialize();
             }
-            public void Dispose() { if (Host != null) { Invoke(Coordinator, "OnDisable"); UnityEngine.Object.DestroyImmediate(Host); } }
+            public void Dispose()
+            {
+                if (Host == null) return;
+                Invoke(Coordinator, "OnDisable");
+                if (Binding != null) Invoke(Binding, "OnDestroy");
+                UnityEngine.Object.DestroyImmediate(Host);
+            }
         }
         private sealed class FixedClock : ICareClock { public DateTime UtcNow => new(638712864000000000L, DateTimeKind.Utc); }
         private sealed class CountingRandom : IArtIdRandomSource { public int Draws; public int NextArtId() { Draws++; return 17; } }
