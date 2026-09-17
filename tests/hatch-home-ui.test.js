@@ -34,6 +34,7 @@ test("home typography, side activity and scene behavior gates are wired", () => 
   assert.ok(read("Scripts/BigimongReferenceUi.cs").includes("appliedRetainedFocusControls"), "exact eligible-control signature");
   for (const check of ["RejectedResultsAreIsolated", "RetainedOverlayInputOwnership", "RetainedFocusSurvivesRepeatedHide", "RealSummonToBattleRestoresFocus", "PortraitNavigationTouchTargets"])
     assert.ok(checks.includes(check), check);
+  assert.ok(checks.includes("BindSceneEventSystem"), "retained focus checks explicitly bind the generated scene EventSystem");
   assert.equal((read("Editor/BigimongArSceneBuilder.cs").match(/^using TMPro;$/gm) || []).length, 1);
 });
 

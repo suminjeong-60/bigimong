@@ -355,6 +355,7 @@ namespace Bigimong.AR.EditorChecks
             var reference = (BigimongReferenceUi)Field(sceneView, "referenceUi");
             var groups = (CanvasGroup[])Field(reference, "retainedOverlayGroups");
             Require(groups != null && groups.Length == 7 && groups.All(group => group != null), "all seven retained interactive canvases serialized");
+            var eventSystem = BindSceneEventSystem();
             var expected = new[] { "Avatar Creator", "Avatar Editor Entry", "Beta Pet Selection", "Tyrannosaurus Encounter", "Arena Scan Guidance", "Beta Battle Result", "AR Battle HUD" };
             Require(groups.Select(group => group.name).SequenceEqual(expected), "literal retained canvas owners");
             foreach (var canvas in UnityEngine.Object.FindObjectsOfType<Canvas>(true))
@@ -378,9 +379,9 @@ namespace Bigimong.AR.EditorChecks
                 InvokePrivate(home, "Awake"); InvokePrivate(copy, "Awake");
                 foreach (var group in clones) { group.gameObject.SetActive(true); group.interactable = group.blocksRaycasts = true; }
                 var entry = clones[1].GetComponentInChildren<Button>(true);
-                EventSystem.current.SetSelectedGameObject(entry.gameObject);
+                eventSystem.SetSelectedGameObject(entry.gameObject);
                 home.Show();
-                Require(EventSystem.current.currentSelectedGameObject != entry.gameObject, "home clears returning-player editor focus");
+                Require(eventSystem.currentSelectedGameObject != entry.gameObject, "home clears returning-player editor focus");
                 Require(clones.All(group => !group.interactable && !group.blocksRaycasts), "home suspends every retained owner");
                 foreach (var selectable in clones.SelectMany(group => group.GetComponentsInChildren<Selectable>(true)))
                     Require(!selectable.IsInteractable(), "underlying keyboard navigation disabled: " + selectable.name);
@@ -388,7 +389,7 @@ namespace Bigimong.AR.EditorChecks
                     foreach (var next in new[] { button.FindSelectableOnDown(), button.FindSelectableOnUp(), button.FindSelectableOnLeft(), button.FindSelectableOnRight() })
                         Require(next == null || next.transform.IsChildOf(home.transform), "home keyboard navigation cannot reach retained controls");
                 var clicks = 0; entry.onClick.AddListener(() => clicks++);
-                ExecuteEvents.Execute(entry.gameObject, new BaseEventData(EventSystem.current), ExecuteEvents.submitHandler);
+                ExecuteEvents.Execute(entry.gameObject, new BaseEventData(eventSystem), ExecuteEvents.submitHandler);
                 Require(clicks == 0, "hidden editor cannot receive keyboard submit");
                 foreach (var graphic in clones.SelectMany(group => group.GetComponentsInChildren<Graphic>(true)))
                     Require(!graphic.Raycast(Vector2.zero, null), "retained raycast blocked: " + graphic.name);
@@ -403,7 +404,7 @@ namespace Bigimong.AR.EditorChecks
                 SetField(coordinator, "<InputLocked>k__BackingField", false);
                 InvokePrivate(copy, "Hide");
                 Require(clones[6].interactable && clones[6].blocksRaycasts && clones.Take(6).All(group => !group.interactable && !group.blocksRaycasts), "battle route restores only battle owner");
-                Require(EventSystem.current.currentSelectedGameObject == null || EventSystem.current.currentSelectedGameObject.transform.IsChildOf(clones[6].transform), "restored focus belongs only to authorized battle owner");
+                Require(eventSystem.currentSelectedGameObject == null || eventSystem.currentSelectedGameObject.transform.IsChildOf(clones[6].transform), "restored focus belongs only to authorized battle owner");
                 SetField(flow, "<Phase>k__BackingField", OfflineBetaPhase.ArScan);
                 InvokePrivate(copy, "ApplyRetainedInputPolicy");
                 Require(clones[4].interactable && clones[6].interactable && !clones[1].interactable && !clones[2].interactable, "scan restores only scan and battle owners");
@@ -420,7 +421,7 @@ namespace Bigimong.AR.EditorChecks
                     for (var index = 0; index < clones.Length; index++)
                         Require(clones[index].interactable == route.Item2.Contains(index) && clones[index].blocksRaycasts == route.Item2.Contains(index),
                             "literal retained restore matrix " + route.Item1 + "/" + index);
-                    var focus = EventSystem.current.currentSelectedGameObject;
+                    var focus = eventSystem.currentSelectedGameObject;
                     Require(focus == null || route.Item2.Any(index => focus.transform.IsChildOf(clones[index].transform)), "focus follows authorized route only");
                 }
                 RetainedFocusSurvivesRepeatedHide(copy, home, flow, coordinator, clones);
@@ -437,11 +438,19 @@ namespace Bigimong.AR.EditorChecks
             }
             finally
             {
-                EventSystem.current.SetSelectedGameObject(null);
+                if (eventSystem != null) eventSystem.SetSelectedGameObject(null);
                 foreach (var group in clones) UnityEngine.Object.DestroyImmediate(group.gameObject);
                 UnityEngine.Object.DestroyImmediate(copy.gameObject); UnityEngine.Object.DestroyImmediate(home.gameObject);
                 UnityEngine.Object.DestroyImmediate(flowObject);
             }
+        }
+
+        private static EventSystem BindSceneEventSystem()
+        {
+            var eventSystem = UnityEngine.Object.FindFirstObjectByType<EventSystem>();
+            Require(eventSystem != null, "generated scene EventSystem missing");
+            EventSystem.current = eventSystem;
+            return eventSystem;
         }
 
         private static void RetainedFocusSurvivesRepeatedHide(BigimongReferenceUi reference, HatchHomeView home,
@@ -604,7 +613,7 @@ namespace Bigimong.AR.EditorChecks
             }
             finally
             {
-                EventSystem.current.SetSelectedGameObject(null);
+                if (EventSystem.current != null) EventSystem.current.SetSelectedGameObject(null);
                 if (probe != null) UnityEngine.Object.DestroyImmediate(probe);
                 UnityEngine.Object.DestroyImmediate(root);
                 SetField(reference, "flow", previousFlow);
