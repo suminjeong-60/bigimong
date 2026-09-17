@@ -355,7 +355,6 @@ namespace Bigimong.AR.EditorChecks
             var reference = (BigimongReferenceUi)Field(sceneView, "referenceUi");
             var groups = (CanvasGroup[])Field(reference, "retainedOverlayGroups");
             Require(groups != null && groups.Length == 7 && groups.All(group => group != null), "all seven retained interactive canvases serialized");
-            var eventSystem = BindSceneEventSystem();
             var expected = new[] { "Avatar Creator", "Avatar Editor Entry", "Beta Pet Selection", "Tyrannosaurus Encounter", "Arena Scan Guidance", "Beta Battle Result", "AR Battle HUD" };
             Require(groups.Select(group => group.name).SequenceEqual(expected), "literal retained canvas owners");
             foreach (var canvas in UnityEngine.Object.FindObjectsOfType<Canvas>(true))
@@ -365,6 +364,7 @@ namespace Bigimong.AR.EditorChecks
             var home = UnityEngine.Object.Instantiate(sceneView);
             var flowObject = new GameObject("Retained overlay flow fixture");
             var clones = groups.Select(group => UnityEngine.Object.Instantiate(group.gameObject).GetComponent<CanvasGroup>()).ToArray();
+            var eventSystem = BindSceneEventSystem(out var registeredEventSystemForChecks);
             try
             {
                 var flow = flowObject.AddComponent<OfflineBetaFlowController>();
@@ -438,19 +438,36 @@ namespace Bigimong.AR.EditorChecks
             }
             finally
             {
-                if (eventSystem != null) eventSystem.SetSelectedGameObject(null);
-                foreach (var group in clones) UnityEngine.Object.DestroyImmediate(group.gameObject);
-                UnityEngine.Object.DestroyImmediate(copy.gameObject); UnityEngine.Object.DestroyImmediate(home.gameObject);
-                UnityEngine.Object.DestroyImmediate(flowObject);
+                try
+                {
+                    if (eventSystem != null) eventSystem.SetSelectedGameObject(null);
+                    foreach (var group in clones) UnityEngine.Object.DestroyImmediate(group.gameObject);
+                    UnityEngine.Object.DestroyImmediate(copy.gameObject); UnityEngine.Object.DestroyImmediate(home.gameObject);
+                    UnityEngine.Object.DestroyImmediate(flowObject);
+                }
+                finally
+                {
+                    if (registeredEventSystemForChecks) InvokeEventSystemLifecycle(eventSystem, "OnDisable");
+                }
             }
         }
 
-        private static EventSystem BindSceneEventSystem()
+        private static EventSystem BindSceneEventSystem(out bool registeredForChecks)
         {
             var eventSystem = UnityEngine.Object.FindFirstObjectByType<EventSystem>();
             Require(eventSystem != null, "generated scene EventSystem missing");
+            registeredForChecks = EventSystem.current == null;
+            if (registeredForChecks) InvokeEventSystemLifecycle(eventSystem, "OnEnable");
             EventSystem.current = eventSystem;
+            Require(EventSystem.current == eventSystem, "generated scene EventSystem registration failed");
             return eventSystem;
+        }
+
+        private static void InvokeEventSystemLifecycle(EventSystem eventSystem, string methodName)
+        {
+            var method = typeof(EventSystem).GetMethod(methodName, BindingFlags.Instance | BindingFlags.NonPublic);
+            Require(method != null, "EventSystem lifecycle method missing: " + methodName);
+            method.Invoke(eventSystem, null);
         }
 
         private static void RetainedFocusSurvivesRepeatedHide(BigimongReferenceUi reference, HatchHomeView home,
