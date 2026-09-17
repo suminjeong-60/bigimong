@@ -11,6 +11,9 @@ test("hatch home uses one reference-styled safe-area canvas", () => {
     assert.ok(view.includes(text), text);
   for (const text of ["Hatch Home UI", "DeviceSafeArea", "HatchHomeCoordinator", "CreateHatchHome"])
     assert.ok(builder.includes(text), text);
+  for (const canvas of ["AR Battle HUD", "Avatar Creator", "Avatar Editor Entry"])
+    assert.match(builder, new RegExp(`new GameObject\\(\\"${canvas}\\"[^;]+typeof\\(CanvasGroup\\)`), `${canvas} owns input gating`);
+  assert.doesNotMatch(builder, /GetComponent<CanvasGroup>\(\) \?\?/);
   assert.doesNotMatch(view, /LegacyRuntime\.ttf/);
 });
 

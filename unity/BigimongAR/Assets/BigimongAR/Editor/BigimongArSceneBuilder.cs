@@ -222,7 +222,8 @@ namespace Bigimong.Editor
         {
             var canvas = new SerializedObject(controller).FindProperty(canvasField).objectReferenceValue as GameObject;
             if (canvas == null) throw new System.InvalidOperationException("Missing retained canvas: " + canvasField);
-            var group = canvas.GetComponent<CanvasGroup>() ?? canvas.AddComponent<CanvasGroup>();
+            var group = canvas.GetComponent<CanvasGroup>();
+            if (group == null) throw new System.InvalidOperationException("Missing retained CanvasGroup: " + canvasField);
             group.interactable = group.blocksRaycasts = false;
             group.ignoreParentGroups = false;
             return group;
@@ -296,7 +297,7 @@ namespace Bigimong.Editor
 
         private static ArBattleHud CreateHud(ArBattleNativeBridge bridge, out GameObject trackingPanel, out GameObject disconnectedPanel)
         {
-            var canvasObject = new GameObject("AR Battle HUD", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            var canvasObject = new GameObject("AR Battle HUD", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
             var canvas = canvasObject.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             var scaler = canvasObject.GetComponent<CanvasScaler>();
@@ -380,7 +381,7 @@ namespace Bigimong.Editor
             var systems = new GameObject("Avatar Creator Systems");
             var controller = systems.AddComponent<AvatarCreatorController>();
 
-            var canvasObject = new GameObject("Avatar Creator", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            var canvasObject = new GameObject("Avatar Creator", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
             var canvas = canvasObject.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.ScreenSpaceOverlay;
             canvas.sortingOrder = 20;
@@ -479,7 +480,7 @@ namespace Bigimong.Editor
             AnchorToTop(feminine.GetComponent<RectTransform>());
             AnchorToTop(save.GetComponent<RectTransform>());
 
-            var editorEntry = new GameObject("Avatar Editor Entry", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            var editorEntry = new GameObject("Avatar Editor Entry", typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
             var editorCanvas = editorEntry.GetComponent<Canvas>();
             editorCanvas.renderMode = RenderMode.ScreenSpaceOverlay;
             editorCanvas.sortingOrder = 19;
@@ -574,7 +575,7 @@ namespace Bigimong.Editor
 
         private static GameObject CreateBetaCanvas(string name, out RectTransform safeArea)
         {
-            var canvasObject = new GameObject(name, typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster));
+            var canvasObject = new GameObject(name, typeof(Canvas), typeof(CanvasScaler), typeof(GraphicRaycaster), typeof(CanvasGroup));
             canvasObject.GetComponent<Canvas>().renderMode = RenderMode.ScreenSpaceOverlay;
             canvasObject.GetComponent<Canvas>().sortingOrder = 10;
             var scaler = canvasObject.GetComponent<CanvasScaler>();
