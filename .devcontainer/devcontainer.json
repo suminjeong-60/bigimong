@@ -1,0 +1,15 @@
+{
+  "name": "Bigimong Unreal source development",
+  "image": "mcr.microsoft.com/devcontainers/universal:2",
+  "postCreateCommand": "bash scripts/verify-unreal-cloud.sh",
+  "forwardPorts": [4173, 4180],
+  "portsAttributes": {
+    "4173": { "label": "비기몽 브라우저 실험판", "onAutoForward": "notify" },
+    "4180": { "label": "비기몽 개발 API", "onAutoForward": "silent" }
+  },
+  "customizations": {
+    "codespaces": {
+      "openFiles": ["unreal/Bigimong/README.md", "docs/superpowers/specs/2026-09-26-unreal-migration-design.md"]
+    }
+  }
+}

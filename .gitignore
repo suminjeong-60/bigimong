@@ -19,3 +19,16 @@ unity/BigimongAR/Assets/BigimongAR/Resources/GeneratedCharacters/*.controller.me
 
 # User-supplied visual references stay private; never publish source images.
 docs/art-reference/*.png
+
+# Unreal preview outputs and privately recovered VARCO models.
+/unreal/Bigimong/PrivateAssets/
+/unreal/Bigimong/Content/Varco/
+/unreal/Bigimong/Content/ReferenceSheets/
+/unreal/Bigimong/Content/Customization/Thumbnails/
+/unreal/Bigimong/BigimongAssets.uproject
+/unreal/Bigimong/Binaries/
+/unreal/Bigimong/Intermediate/
+/unreal/Bigimong/Saved/
+/unreal/Bigimong/DerivedDataCache/
+**/__pycache__/
+*.pyc

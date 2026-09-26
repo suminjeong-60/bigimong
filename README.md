@@ -1,5 +1,7 @@
 # 비기몽 제작 기반 v0.19
 
+> Unreal 전환 작업 시작: [`unreal/Bigimong/README.md`](unreal/Bigimong/README.md). 현재 미리보기 소스이며 기존 Unity/Android 배포판을 교체한 APK는 아직 아닙니다.
+
 이전 AR 설계와 검증 범위: [참고 디자인·AR 구성](docs/AR_IMPLEMENTATION_v0.13.md).
 
 비기몽의 성장·재화·전투 규칙을 실제 코드로 검증하기 위한 프로젝트입니다.
