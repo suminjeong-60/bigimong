@@ -7,6 +7,8 @@
     { "Name": "Bigimong", "Type": "Runtime", "LoadingPhase": "Default" }
   ],
   "Plugins": [
-    { "Name": "GoogleARCore", "Enabled": true }
+    { "Name": "GoogleARCore", "Enabled": true },
+    { "Name": "PythonScriptPlugin", "Enabled": true },
+    { "Name": "EditorScriptingUtilities", "Enabled": true }
   ]
 }

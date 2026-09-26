@@ -28,6 +28,16 @@ python3 scripts/stage-unreal-male.py
 
 Unreal Editor에서 `PrivateAssets/Varco/UnrealImport/*.glb`를 `/Game/Varco/Male/`에 가져와야 런타임에 선택 결과가 보입니다. 아래 이름의 **실제 `.uasset` 32개**가 만들어졌는지 에디터 콘텐츠 브라우저에서 확인합니다.
 
+Editor가 설치된 머신에서는 프로젝트의 Python Editor Script / Editor Scripting Utilities 플러그인을 사용해 **정적 메시 31개**를 한 번에 가져올 수 있습니다. 엔진 실행 파일과 비공개 GLB가 **같은 머신**에 있을 때 저장소 루트에서 실행합니다.
+
+```bash
+/path/to/UnrealEngine/Engine/Binaries/Linux/UnrealEditor-Cmd \
+  "$PWD/unreal/Bigimong/Bigimong.uproject" \
+  -ExecutePythonScript="$PWD/scripts/import-unreal-male.py"
+```
+
+스크립트는 32개 파일과 얼굴 모프를 먼저 확인하고 기존 자산을 덮어쓰지 않습니다. 생성된 정적 메시의 경로·타입을 하나씩 검사하며 예상과 다르면 오류를 내고 멈춥니다. **얼굴 `SK_MaleFace`는 아직 자동 가져오기 대상이 아닙니다.** 아래 표의 Interchange 모프 설정으로 별도 가져온 뒤 15개 모프 이름과 실제 외형을 확인해야 합니다. 현재 Codespace에는 Unreal Editor가 없으므로 위 명령을 실제 엔진에서 시험하지 못했습니다.
+
 | 소스 | 가져오기 결과의 이름 | 가져오기 조건 |
 |---|---|---|
 | `UnrealImport/SM_MaleBody.glb` | `SM_MaleBody` | 정적 메시로 가져오기 |
@@ -90,6 +100,7 @@ python3 -m unittest discover -s tests -p 'test_prepare_unreal_varco.py' -v
 BIGIMONG_TEST_APK=/path/to/01-BigiDragon-0.3.1-Compatible.apk python3 -m unittest discover -s tests -p 'test_prepare_unreal_varco.py' -v
 BIGIMONG_TEST_APK=/path/to/01-BigiDragon-0.3.1-Compatible.apk python3 -m unittest discover -s tests -p 'test_prepare_unreal_male.py' -v
 python3 -m unittest discover -s tests -p 'test_stage_unreal_male.py' -v
+python3 -m unittest discover -s tests -p 'test_import_unreal_male.py' -v
 python3 -m unittest discover -s tests -p 'test_unreal_android_build.py' -v
 npm test
 bash scripts/verify-unreal-cloud.sh
