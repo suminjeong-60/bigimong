@@ -6,6 +6,7 @@
 
 class ABigimongHomePawn;
 class UButton;
+class UImage;
 class UTextBlock;
 
 UCLASS()
@@ -29,6 +30,9 @@ private:
 
     UPROPERTY(Transient)
     TObjectPtr<UTextBlock> OptionLabel;
+
+    UPROPERTY(Transient)
+    TObjectPtr<UImage> OptionImage;
 
     UPROPERTY(Transient)
     TObjectPtr<UButton> PreviousButton;

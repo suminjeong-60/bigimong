@@ -72,7 +72,12 @@ class MalePartExtractionTest(unittest.TestCase):
 
     def test_rejects_symlink_destination(self):
         self.write_apk()
-        self.output.symlink_to(self.root, target_is_directory=True)
+        try:
+            self.output.symlink_to(self.root, target_is_directory=True)
+        except OSError as error:
+            if getattr(error, "winerror", None) == 1314:
+                self.skipTest("Windows symlink creation requires Developer Mode or privilege")
+            raise
         with self.assertRaises(ValueError):
             module.prepare(self.apk, self.output, expected_hashes=self.hashes)
 

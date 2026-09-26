@@ -26,16 +26,19 @@ int main()
     assert(Next(original, Option::FaceShape, -1).faceShape == 15);
     assert(Next(original, Option::EyeShape, -1).eyeShape == 3);
 
-    assert(Select(changed, Option::SkinTone, 8));
+    assert(Select(changed, Option::SkinTone, 15));
     assert(Select(changed, Option::EyeColor, 8));
     assert(Select(changed, Option::HairColor, 10));
     assert(Valid(changed));
     assert(!Select(changed, Option::EyeShape, 0));
     assert(!Select(changed, Option::FaceShape, 16));
-    assert(!Select(changed, Option::SkinTone, 9));
+    assert(!Select(changed, Option::SkinTone, 16));
     assert(!Select(changed, Option::HairColor, 11));
     assert(EyeAssetName(changed) == "male-eye-14.glb");
     assert(Next(changed, Option::SkinTone, 1).skinTone == 1);
+    assert(Limit(Option::SkinTone) == 15);
+    const auto darkest = SkinColor(15);
+    assert(darkest.red < SkinColor(1).red);
     const auto skin = SkinColor(original.skinTone);
     const auto iris = IrisColor(original.eyeColor);
     const auto hair = HairColor(original.hairColor);

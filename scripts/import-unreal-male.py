@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Import the 31 male static meshes in Unreal Editor; verify face for manual morph import.
+"""Import the 31 male static meshes and morphable face in Unreal Editor.
 
 Run inside Unreal Editor's Python plugin after scripts/stage-unreal-male.py.
-The unrigged face requires Interchange morph-to-skeletal options in the Editor UI.
+The unrigged face is converted to a skeletal mesh by an Interchange pipeline.
 """
 
 import argparse
@@ -57,6 +57,13 @@ def import_static(plan, engine):
     for source, target in plan:
         if library.does_asset_exist(target):
             continue
+        nested = f"{DESTINATION}/{source.stem}/StaticMeshes/{source.stem}"
+        if library.does_asset_exist(nested):
+            if not isinstance(library.load_asset(nested), engine.StaticMesh):
+                raise RuntimeError(f"An existing nested asset is not a static mesh: {nested}")
+            if not library.rename_asset(nested, target):
+                raise RuntimeError(f"Could not move existing static mesh: {nested}")
+            continue
         task = engine.AssetImportTask()
         for property_name, value in (
             ("filename", str(source)), ("destination_path", DESTINATION),
@@ -65,10 +72,50 @@ def import_static(plan, engine):
         ):
             task.set_editor_property(property_name, value)
         tools.import_asset_tasks([task])
+        if not library.does_asset_exist(target):
+            if (library.does_asset_exist(nested)
+                    and isinstance(library.load_asset(nested), engine.StaticMesh)):
+                library.rename_asset(nested, target)
         if not library.does_asset_exist(target) or not isinstance(library.load_asset(target), engine.StaticMesh):
             raise RuntimeError(f"Interchange did not create the expected static mesh: {target}")
         imported += 1
     return imported
+
+
+def import_face(source, engine):
+    """Import and verify the base face plus its 14 selectable morph targets."""
+    source = Path(source) / "SK_MaleFace.glb"
+    target = f"{DESTINATION}/SK_MaleFace"
+    library = engine.EditorAssetLibrary
+    was_present = library.does_asset_exist(target)
+    if not was_present:
+        pipeline = engine.InterchangeGenericAssetsPipeline()
+        pipeline.set_editor_property("asset_type_sub_folders", False)
+        mesh = pipeline.get_editor_property("mesh_pipeline")
+        mesh.set_editor_property("import_morph_targets", True)
+        mesh.set_editor_property("import_skeletal_meshes", True)
+        mesh.set_editor_property("import_static_meshes", False)
+        common = pipeline.get_editor_property("common_meshes_properties")
+        common.set_editor_property("convert_statics_with_morph_targets_to_skeletals", True)
+        stack = engine.InterchangePipelineStackOverride()
+        stack.add_pipeline(pipeline)
+        task = engine.AssetImportTask()
+        for property_name, value in (
+            ("filename", str(source)), ("destination_path", DESTINATION),
+            ("destination_name", "SK_MaleFace"), ("automated", True),
+            ("async_", False), ("replace_existing", False),
+            ("save", True), ("options", stack),
+        ):
+            task.set_editor_property(property_name, value)
+        engine.AssetToolsHelpers.get_asset_tools().import_asset_tasks([task])
+    face = library.load_asset(target)
+    if not isinstance(face, engine.SkeletalMesh):
+        raise RuntimeError("Interchange did not create the expected skeletal face")
+    morphs = {str(name) for name in face.get_all_morph_target_names()}
+    required = set(MORPHS[1:])
+    if not required.issubset(morphs):
+        raise RuntimeError(f"Skeletal face is missing morph targets: {sorted(required - morphs)}")
+    return not was_present
 
 
 if __name__ == "__main__":
@@ -79,8 +126,9 @@ if __name__ == "__main__":
         plan = preflight(args.source)
         import unreal
         count = import_static(plan, unreal)
+        face_imported = import_face(args.source, unreal)
     except (ModuleNotFoundError, AttributeError) as error:
         parser.exit(2, f"Unreal Editor with Python Editor Script and Editor Scripting Utilities is required: {error}\n")
     except (OSError, KeyError, IndexError, TypeError, ValueError, RuntimeError) as error:
         parser.exit(1, f"Male import stopped: {error}\n")
-    print(f"Verified {len(plan)} static meshes, imported {count}. Import SK_MaleFace with morph-to-skeletal options in Unreal Editor.")
+    print(f"Verified {len(plan)} static meshes, imported {count}; face {'imported' if face_imported else 'verified'} with 14 morph targets.")

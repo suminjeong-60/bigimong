@@ -24,8 +24,8 @@ namespace BigimongMaleAvatar
         {
         case Option::EyeShape:
         case Option::FaceShape:
-        case Option::HairStyle: return 15;
-        case Option::SkinTone:
+        case Option::HairStyle:
+        case Option::SkinTone: return 15;
         case Option::EyeColor: return 8;
         case Option::HairColor: return 10;
         }
@@ -37,7 +37,7 @@ namespace BigimongMaleAvatar
         return selection.eyeShape >= 1 && selection.eyeShape <= 15 &&
             selection.faceShape >= 1 && selection.faceShape <= 15 &&
             selection.hairStyle >= 1 && selection.hairStyle <= 15 &&
-            selection.skinTone >= 1 && selection.skinTone <= 8 &&
+            selection.skinTone >= 1 && selection.skinTone <= 15 &&
             selection.eyeColor >= 1 && selection.eyeColor <= 8 &&
             selection.hairColor >= 1 && selection.hairColor <= 10;
     }
@@ -103,11 +103,13 @@ namespace BigimongMaleAvatar
     inline Rgb SkinColor(int id)
     {
         constexpr Rgb colors[] = {
-            {1.00f, .84f, .72f}, {.96f, .75f, .61f}, {.88f, .64f, .48f},
-            {.76f, .51f, .36f}, {.64f, .40f, .27f}, {.51f, .30f, .20f},
-            {.39f, .22f, .15f}, {.28f, .15f, .11f}
+            {1.00f, .84f, .72f}, {.99f, .82f, .68f}, {.97f, .79f, .64f},
+            {.96f, .75f, .61f}, {.92f, .70f, .55f}, {.88f, .64f, .48f},
+            {.82f, .57f, .41f}, {.76f, .51f, .36f}, {.70f, .45f, .31f},
+            {.64f, .40f, .27f}, {.57f, .34f, .23f}, {.51f, .30f, .20f},
+            {.45f, .26f, .17f}, {.39f, .22f, .15f}, {.28f, .15f, .11f}
         };
-        return colors[id >= 1 && id <= 8 ? id - 1 : 0];
+        return colors[id >= 1 && id <= 15 ? id - 1 : 0];
     }
 
     inline Rgb IrisColor(int id)

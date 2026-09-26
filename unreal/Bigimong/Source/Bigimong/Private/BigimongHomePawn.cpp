@@ -4,14 +4,31 @@
 #include "Blueprint/UserWidget.h"
 #include "Camera/CameraComponent.h"
 #include "Components/InputComponent.h"
+#include "Components/MeshComponent.h"
 #include "Components/SceneComponent.h"
 #include "Components/SkeletalMeshComponent.h"
 #include "Components/StaticMeshComponent.h"
 #include "Kismet/GameplayStatics.h"
 #include "GameFramework/PlayerController.h"
 #include "Engine/StaticMesh.h"
+#include "Materials/MaterialInstanceDynamic.h"
 #include "InputCoreTypes.h"
 #include "UObject/ConstructorHelpers.h"
+
+namespace
+{
+    void TintSlot(UMeshComponent* Mesh, const TCHAR* SlotName, const TCHAR* Parameter,
+        const BigimongMaleAvatar::Rgb& Color)
+    {
+        const int32 Index = Mesh->GetMaterialIndex(FName(SlotName));
+        if (Index < 0) return;
+        UMaterialInstanceDynamic* Material = Cast<UMaterialInstanceDynamic>(Mesh->GetMaterial(Index));
+        if (!Material) Material = Mesh->CreateDynamicMaterialInstance(Index);
+        if (Material)
+            Material->SetVectorParameterValue(FName(Parameter),
+                FLinearColor(Color.red, Color.green, Color.blue));
+    }
+}
 
 ABigimongHomePawn::ABigimongHomePawn()
 {
@@ -23,8 +40,8 @@ ABigimongHomePawn::ABigimongHomePawn()
 
     PreviewCamera = CreateDefaultSubobject<UCameraComponent>(TEXT("PreviewCamera"));
     PreviewCamera->SetupAttachment(RootComponent);
-    PreviewCamera->SetRelativeLocation(FVector(-340.f, 0.f, 115.f));
-    PreviewCamera->SetRelativeRotation(FRotator(-6.f, 0.f, 0.f));
+    PreviewCamera->SetRelativeLocation(FVector(0.f, 340.f, 115.f));
+    PreviewCamera->SetRelativeRotation(FRotator(-3.f, -90.f, 0.f));
     PreviewCamera->bAutoActivate = true;
 
     Egg = CreateDefaultSubobject<UStaticMeshComponent>(TEXT("Egg"));
@@ -126,17 +143,33 @@ void ABigimongHomePawn::LoadMaleParts()
         UE_LOG(LogTemp, Warning, TEXT("Male modular body/face not imported; customization is unavailable"));
         return;
     }
-    const FBoxSphereBounds Bounds = Body->GetBounds();
-    if (Bounds.BoxExtent.Z <= KINDA_SMALL_NUMBER) return;
     MaleBody->SetStaticMesh(Body);
     MaleFace->SetSkeletalMesh(Face);
-    const float Scale = 165.f / (2.f * Bounds.BoxExtent.Z);
-    MalePartsPivot->SetRelativeScale3D(FVector(Scale));
-    MalePartsPivot->SetRelativeLocation(FVector(0.f, 0.f,
-        (Bounds.BoxExtent.Z - Bounds.Origin.Z) * Scale));
     bMalePartsReady = ApplyMaleSelection(MaleSelection);
     if (!bMalePartsReady)
+    {
         UE_LOG(LogTemp, Warning, TEXT("Male eye/hair parts missing; customization is unavailable"));
+        return;
+    }
+    float MinZ = BIG_NUMBER;
+    float MaxZ = -BIG_NUMBER;
+    const auto IncludeBounds = [&MinZ, &MaxZ](const FBoxSphereBounds& Bounds)
+    {
+        MinZ = FMath::Min(MinZ, Bounds.Origin.Z - Bounds.BoxExtent.Z);
+        MaxZ = FMath::Max(MaxZ, Bounds.Origin.Z + Bounds.BoxExtent.Z);
+    };
+    IncludeBounds(Body->GetBounds());
+    IncludeBounds(Face->GetBounds());
+    IncludeBounds(MaleEyes->GetStaticMesh()->GetBounds());
+    IncludeBounds(MaleHair->GetStaticMesh()->GetBounds());
+    if (MaxZ - MinZ <= KINDA_SMALL_NUMBER)
+    {
+        bMalePartsReady = false;
+        return;
+    }
+    const float Scale = 165.f / (MaxZ - MinZ);
+    MalePartsPivot->SetRelativeScale3D(FVector(Scale));
+    MalePartsPivot->SetRelativeLocation(FVector(0.f, 0.f, -MinZ * Scale));
 }
 
 bool ABigimongHomePawn::ApplyMaleSelection(const BigimongMaleAvatar::Selection& Candidate)
@@ -160,12 +193,11 @@ bool ABigimongHomePawn::ApplyMaleSelection(const BigimongMaleAvatar::Selection& 
     const auto Skin = BigimongMaleAvatar::SkinColor(Candidate.skinTone);
     const auto Iris = BigimongMaleAvatar::IrisColor(Candidate.eyeColor);
     const auto HairTint = BigimongMaleAvatar::HairColor(Candidate.hairColor);
-    // Imported materials must expose these vector parameters; see README.
-    const FVector SkinVector(Skin.red, Skin.green, Skin.blue);
-    MaleBody->SetVectorParameterValueOnMaterials(TEXT("SkinTint"), SkinVector);
-    MaleFace->SetVectorParameterValueOnMaterials(TEXT("SkinTint"), SkinVector);
-    MaleEyes->SetVectorParameterValueOnMaterials(TEXT("IrisTint"), FVector(Iris.red, Iris.green, Iris.blue));
-    MaleHair->SetVectorParameterValueOnMaterials(TEXT("HairTint"), FVector(HairTint.red, HairTint.green, HairTint.blue));
+    TintSlot(MaleBody, TEXT("BodySkin"), TEXT("BaseColorFactor"), Skin);
+    TintSlot(MaleFace, TEXT("Skin"), TEXT("BaseColorFactor"), Skin);
+    TintSlot(MaleFace, TEXT("SkinInner"), TEXT("BaseColorFactor"), Skin);
+    TintSlot(MaleEyes, TEXT("Iris"), TEXT("BaseColorFactor"), Iris);
+    TintSlot(MaleHair, TEXT("Hair"), TEXT("BaseColorFactor"), HairTint);
     return true;
 }
 

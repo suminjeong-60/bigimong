@@ -26,6 +26,32 @@ class FakeStaticMesh(FakeAsset):
     pass
 
 
+class FakeSkeletalMesh(FakeAsset):
+    def get_all_morph_target_names(self):
+        return [f"face_{i:02d}" for i in range(1, 15)]
+
+
+class FakePipeline:
+    def __init__(self):
+        self.properties = {}
+        self.mesh_pipeline = FakeTask()
+        self.common_meshes_properties = FakeTask()
+
+    def set_editor_property(self, name, value):
+        self.properties[name] = value
+
+    def get_editor_property(self, name):
+        return getattr(self, name)
+
+
+class FakeStack:
+    def __init__(self):
+        self.pipelines = []
+
+    def add_pipeline(self, pipeline):
+        self.pipelines.append(pipeline)
+
+
 class FakeTask:
     def __init__(self):
         self.properties = {}
@@ -43,6 +69,12 @@ class FakeLibrary:
 
     def load_asset(self, path):
         return self.assets.get(path)
+
+    def rename_asset(self, source, destination):
+        if source not in self.assets or destination in self.assets:
+            return False
+        self.assets[destination] = self.assets.pop(source)
+        return True
 
 
 class FakeTools:
@@ -68,6 +100,9 @@ class FakeHelpers:
 class FakeEngine:
     AssetImportTask = FakeTask
     StaticMesh = FakeStaticMesh
+    SkeletalMesh = FakeSkeletalMesh
+    InterchangeGenericAssetsPipeline = FakePipeline
+    InterchangePipelineStackOverride = FakeStack
 
     def __init__(self):
         self.EditorAssetLibrary = FakeLibrary()
@@ -137,6 +172,58 @@ class MaleEditorImportTest(unittest.TestCase):
         engine.tools.import_asset_tasks = lambda tasks: None
         with self.assertRaisesRegex(RuntimeError, "SM_MaleBody"):
             module.import_static(module.preflight(self.prepared), engine)
+
+    def test_moves_interchange_nested_static_mesh_to_runtime_path(self):
+        engine = FakeEngine()
+
+        def import_nested(tasks):
+            for task in tasks:
+                name = Path(task.properties["filename"]).stem
+                nested = f'{task.properties["destination_path"]}/{name}/StaticMeshes/{name}'
+                engine.EditorAssetLibrary.assets[nested] = FakeStaticMesh()
+
+        engine.tools.import_asset_tasks = import_nested
+        count = module.import_static(module.preflight(self.prepared), engine)
+        self.assertEqual(count, 31)
+        self.assertIn("/Game/Varco/Male/SM_MaleBody", engine.EditorAssetLibrary.assets)
+        self.assertIn("/Game/Varco/Male/SM_MaleEye_14", engine.EditorAssetLibrary.assets)
+        self.assertNotIn(
+            "/Game/Varco/Male/SM_MaleBody/StaticMeshes/SM_MaleBody",
+            engine.EditorAssetLibrary.assets,
+        )
+
+    def test_recovers_static_mesh_from_interrupted_nested_import(self):
+        engine = FakeEngine()
+        engine.EditorAssetLibrary.assets[
+            "/Game/Varco/Male/SM_MaleBody/StaticMeshes/SM_MaleBody"
+        ] = FakeStaticMesh()
+        count = module.import_static(module.preflight(self.prepared), engine)
+        self.assertEqual(count, 30)
+        self.assertIn("/Game/Varco/Male/SM_MaleBody", engine.EditorAssetLibrary.assets)
+        self.assertEqual(len(engine.tools.calls), 30)
+
+    def test_face_import_uses_skeletal_morph_pipeline_and_verifies_14_nonbase_shapes(self):
+        engine = FakeEngine()
+        target = "/Game/Varco/Male/SK_MaleFace"
+
+        def import_face_task(tasks):
+            engine.tools.calls.extend(tasks)
+            engine.EditorAssetLibrary.assets[target] = FakeSkeletalMesh()
+
+        engine.tools.import_asset_tasks = import_face_task
+        self.assertTrue(module.import_face(self.prepared, engine))
+        self.assertIsInstance(engine.EditorAssetLibrary.assets[target], FakeSkeletalMesh)
+        task = engine.tools.calls[0]
+        self.assertEqual(task.properties["destination_name"], "SK_MaleFace")
+        self.assertFalse(task.properties["replace_existing"])
+        pipeline = task.properties["options"].pipelines[0]
+        self.assertTrue(pipeline.mesh_pipeline.properties["import_morph_targets"])
+        self.assertTrue(pipeline.mesh_pipeline.properties["import_skeletal_meshes"])
+        self.assertFalse(pipeline.mesh_pipeline.properties["import_static_meshes"])
+        self.assertTrue(pipeline.common_meshes_properties.properties[
+            "convert_statics_with_morph_targets_to_skeletals"])
+        self.assertFalse(module.import_face(self.prepared, engine))
+        self.assertEqual(len(engine.tools.calls), 1)
 
 
 if __name__ == "__main__":

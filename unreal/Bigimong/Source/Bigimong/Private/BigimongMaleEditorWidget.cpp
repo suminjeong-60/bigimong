@@ -6,8 +6,10 @@
 #include "Components/CanvasPanel.h"
 #include "Components/CanvasPanelSlot.h"
 #include "Components/HorizontalBox.h"
+#include "Components/Image.h"
 #include "Components/TextBlock.h"
 #include "Components/VerticalBox.h"
+#include "Engine/Texture2D.h"
 
 namespace
 {
@@ -62,6 +64,10 @@ void UBigimongMaleEditorWidget::NativeConstruct()
     OptionLabel->SetColorAndOpacity(FSlateColor(FLinearColor::White));
     Column->AddChildToVerticalBox(OptionLabel);
 
+    OptionImage = WidgetTree->ConstructWidget<UImage>(UImage::StaticClass());
+    OptionImage->SetDesiredSizeOverride(FVector2D(192.f, 192.f));
+    Column->AddChildToVerticalBox(OptionImage);
+
     UHorizontalBox* Actions = WidgetTree->ConstructWidget<UHorizontalBox>(UHorizontalBox::StaticClass());
     Column->AddChildToVerticalBox(Actions);
     PreviousButton = MakeButton(WidgetTree, TEXT("◀ 이전"));
@@ -85,6 +91,23 @@ void UBigimongMaleEditorWidget::Refresh()
     OptionLabel->SetText(FText::FromString(bReady
         ? FString::Printf(TEXT("%d / %d"), Target->GetMaleOption(Category), BigimongMaleAvatar::Limit(Option))
         : TEXT("3D 부품을 가져온 뒤 선택 가능")));
+    if (OptionImage)
+    {
+        static const TCHAR* ThumbnailTypes[] = {
+            TEXT("Eye"), TEXT("Face"), TEXT("Hair"), TEXT("Skin")};
+        if (bReady && Category < 4)
+        {
+            const int32 Id = Target->GetMaleOption(Category);
+            const FString AssetPath = FString::Printf(
+                TEXT("/Game/Customization/Thumbnails/T_%s_%02d.T_%s_%02d"),
+                ThumbnailTypes[Category], Id, ThumbnailTypes[Category], Id);
+            UTexture2D* Thumbnail = LoadObject<UTexture2D>(nullptr, *AssetPath);
+            OptionImage->SetBrushFromTexture(Thumbnail, false);
+            OptionImage->SetVisibility(Thumbnail ? ESlateVisibility::Visible : ESlateVisibility::Collapsed);
+        }
+        else
+            OptionImage->SetVisibility(ESlateVisibility::Collapsed);
+    }
     if (PreviousButton) PreviousButton->SetIsEnabled(bReady);
     if (NextButton) NextButton->SetIsEnabled(bReady);
 }
