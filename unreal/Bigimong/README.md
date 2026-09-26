@@ -29,6 +29,22 @@ Unreal Editor에서 다음 자산을 `/Game/Varco/Male/`에 가져와야 런타�
 
 몸·얼굴·눈·헤어의 원본 좌표를 동일하게 유지해야 조립됩니다. 스킨/홍채/헤어 색 변경에는 각각 `SkinTint`, `IrisTint`, `HairTint` 벡터 파라미터를 가진 텍스처 보존용 머티리얼이 필요합니다. 단순 GLB 기본 머티리얼만 가져온 상태에서는 색상 버튼이 실제 색을 바꾸지 않습니다. 가져온 메시나 머티리얼을 확인하기 전에는 이전 남성 모델을 보여주고 선택 버튼을 비활성화합니다. 부품이 준비되면 화면의 `항목 바꾸기`·`이전`·`다음`으로 각각 고르고 저장합니다. 이 수동 가져오기 과정과 Unreal 렌더링/갤럭시 APK 빌드는 아직 이 클라우드에서 검증하지 못했습니다. 남성 기본 GLB만 약 38만 삼각형이어서 모바일용 최적화가 필요합니다.
 
+### Unreal Android APK 빌드
+
+Unreal Engine 5.8, 해당 엔진의 Android SDK/NDK/JDK, `/Game/Varco/Male` 아래 **32개**(몸 1·얼굴 1·눈 15·헤어 15)의 가져온 `.uasset`이 준비된 빌드 머신에서 실행합니다.
+
+Android 도구가 아직 설치되지 않은 엔진 머신에서는 먼저 엔진의 Turnkey로 설치합니다.
+
+```bash
+/path/to/UnrealEngine/Engine/Build/BatchFiles/RunUAT.sh Turnkey -Command=InstallSDK -platform=Android -SdkType=Full -BestAvailable -Unattended -nocompile -nocompileuat
+```
+
+```bash
+BIGIMONG_UNREAL_ROOT=/path/to/UnrealEngine bash scripts/build-unreal-android.sh
+```
+
+명령은 `BuildCookRun`으로 Unreal 클라이언트를 Android용으로 빌드·쿠킹·패키징한 뒤 APK 구조/CRC와 ARM64 라이브러리를 검사하여 `build/Android/Bigimong-Unreal-MalePreview-debug.apk` 및 SHA-256 파일을 만듭니다. 엔진이나 자산이 없으면 **APK를 만들지 않고 오류를 표시**합니다. 이는 기존 Android/Unity APK와 다른 `com.bigimong.unrealpreview` 개발용 패키지입니다. 현재 Codespaces 기본 컨테이너에서는 Unreal Engine·Android SDK/NDK와 가져온 비공개 `.uasset`을 제공하지 않으므로 이 명령의 실제 엔진 빌드가 수행되지 않았습니다. 엔진 빌드 후에도 실기기 설치·화면과 Play Protect 판정은 별도 확인이 필요합니다.
+
 ## VARCO 원본 모델 연결
 
 저장소 루트에서, 직접 소유한 0.3.1 APK를 지정합니다.
@@ -65,6 +81,7 @@ python3 scripts/prepare-unreal-varco.py --apk /path/to/01-BigiDragon-0.3.1-Compa
 python3 -m unittest discover -s tests -p 'test_prepare_unreal_varco.py' -v
 BIGIMONG_TEST_APK=/path/to/01-BigiDragon-0.3.1-Compatible.apk python3 -m unittest discover -s tests -p 'test_prepare_unreal_varco.py' -v
 BIGIMONG_TEST_APK=/path/to/01-BigiDragon-0.3.1-Compatible.apk python3 -m unittest discover -s tests -p 'test_prepare_unreal_male.py' -v
+python3 -m unittest discover -s tests -p 'test_unreal_android_build.py' -v
 npm test
 bash scripts/verify-unreal-cloud.sh
 ```
