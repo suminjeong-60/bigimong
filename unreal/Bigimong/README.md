@@ -18,16 +18,24 @@ python3 scripts/prepare-unreal-male.py --apk /path/to/01-BigiDragon-0.3.1-Compat
 
 이 명령은 제공된 APK에서 남성 기본 GLB 1개, 눈 GLB 15개, 헤어 GLB 15개를 고정 SHA-256과 메시/모프 구조로 확인하여 **Git에 올라가지 않는** `PrivateAssets/Varco/MaleParts/`에 풉니다. 기본 GLB의 `face_00`~`face_14` 모프가 얼굴형 15종입니다. 사용자 이미지 원본과 첫 남성 디자인 시안도 `PrivateAssets/References/`에만 보관합니다. 시안 PNG는 3D 메시가 아닙니다.
 
-Unreal Editor에서 다음 자산을 `/Game/Varco/Male/`에 가져와야 런타임에 선택 결과가 보입니다.
+Codespace에 검증된 원본 31개를 이미 복사했다면 APK를 다시 올리지 않고 다음 명령을 사용합니다.
+
+```bash
+python3 scripts/stage-unreal-male.py
+```
+
+이 명령은 **원본을 보존하면서** `PrivateAssets/Varco/UnrealImport/`에 몸 1개, 얼굴 1개, 눈 15개, 헤어 15개, 총 **32개 GLB**를 생성합니다. 모델마다 고정 SHA-256을 먼저 검사하고, 원본 눈·머리의 분리된 조각을 번호별 단일 메시로 결합하며 위치·비균등 크기 조정을 정점/법선에 반영합니다. 기존 출력과 내용이 다르면 덮어쓰지 않습니다. 생성 파일도 공개 Git에 포함되지 않습니다.
+
+Unreal Editor에서 `PrivateAssets/Varco/UnrealImport/*.glb`를 `/Game/Varco/Male/`에 가져와야 런타임에 선택 결과가 보입니다. 아래 이름의 **실제 `.uasset` 32개**가 만들어졌는지 에디터 콘텐츠 브라우저에서 확인합니다.
 
 | 소스 | 가져오기 결과의 이름 | 가져오기 조건 |
 |---|---|---|
-| `male-base.glb`의 몸체 `VARCO_Original_Body_male` | `SM_MaleBody` | 정적 메시로 가져오기 |
-| 같은 GLB의 얼굴 `VARCO_Custom_Face_male` | `SK_MaleFace` | **모프가 있는 메시를 스켈레탈 메시로 변환**, 모프 15종 이름 확인 |
-| `male-eye-00.glb`~`14.glb` | `SM_MaleEye_00`~`14` | 각 GLB의 여러 눈 부품을 각각 **한 개의 정적 메시로 결합**하고 위치 유지 |
-| `male-hair-00.glb`~`14.glb` | `SM_MaleHair_00`~`14` | 각 GLB의 머리 가닥을 **한 개의 정적 메시로 결합**하고 위치 유지 |
+| `UnrealImport/SM_MaleBody.glb` | `SM_MaleBody` | 정적 메시로 가져오기 |
+| `UnrealImport/SK_MaleFace.glb` | `SK_MaleFace` | Interchange에서 **Convert Statics with Morph Targets to Skeletals**와 **Import Morph Targets**를 켜고 `face_00`~`face_14` 확인 |
+| `UnrealImport/SM_MaleEye_00.glb`~`14.glb` | `SM_MaleEye_00`~`14` | 각 GLB를 정적 메시 한 개로 가져오기 |
+| `UnrealImport/SM_MaleHair_00.glb`~`14.glb` | `SM_MaleHair_00`~`14` | 각 GLB를 정적 메시 한 개로 가져오기 |
 
-몸·얼굴·눈·헤어의 원본 좌표를 동일하게 유지해야 조립됩니다. 스킨/홍채/헤어 색 변경에는 각각 `SkinTint`, `IrisTint`, `HairTint` 벡터 파라미터를 가진 텍스처 보존용 머티리얼이 필요합니다. 단순 GLB 기본 머티리얼만 가져온 상태에서는 색상 버튼이 실제 색을 바꾸지 않습니다. 가져온 메시나 머티리얼을 확인하기 전에는 이전 남성 모델을 보여주고 선택 버튼을 비활성화합니다. 부품이 준비되면 화면의 `항목 바꾸기`·`이전`·`다음`으로 각각 고르고 저장합니다. 이 수동 가져오기 과정과 Unreal 렌더링/갤럭시 APK 빌드는 아직 이 클라우드에서 검증하지 못했습니다. 남성 기본 GLB만 약 38만 삼각형이어서 모바일용 최적화가 필요합니다.
+몸·얼굴·눈·헤어의 원본 좌표를 동일하게 유지해야 조립됩니다. [Epic의 Unreal 5.8 Interchange 가져오기 옵션](https://dev.epicgames.com/documentation/unreal-engine/interchange-import-reference-in-unreal-engine)에서 위 얼굴 변환/모프 설정을 확인할 수 있습니다. **GLB 준비는 `.uasset` 가져오기가 아닙니다.** 스킨/홍채/헤어 색 변경에는 각각 `SkinTint`, `IrisTint`, `HairTint` 벡터 파라미터를 가진 텍스처 보존용 머티리얼이 필요합니다. 단순 GLB 기본 머티리얼만 가져온 상태에서는 색상 버튼이 실제 색을 바꾸지 않습니다. 가져온 메시나 머티리얼을 확인하기 전에는 이전 남성 모델을 보여주고 선택 버튼을 비활성화합니다. 부품이 준비되면 화면의 `항목 바꾸기`·`이전`·`다음`으로 각각 고르고 저장합니다. 이 수동 가져오기 과정과 Unreal 렌더링/갤럭시 APK 빌드는 아직 이 클라우드에서 검증하지 못했습니다. 남성 기본 GLB만 약 38만 삼각형이어서 모바일용 최적화가 필요합니다.
 
 ### Unreal Android APK 빌드
 
@@ -81,6 +89,7 @@ python3 scripts/prepare-unreal-varco.py --apk /path/to/01-BigiDragon-0.3.1-Compa
 python3 -m unittest discover -s tests -p 'test_prepare_unreal_varco.py' -v
 BIGIMONG_TEST_APK=/path/to/01-BigiDragon-0.3.1-Compatible.apk python3 -m unittest discover -s tests -p 'test_prepare_unreal_varco.py' -v
 BIGIMONG_TEST_APK=/path/to/01-BigiDragon-0.3.1-Compatible.apk python3 -m unittest discover -s tests -p 'test_prepare_unreal_male.py' -v
+python3 -m unittest discover -s tests -p 'test_stage_unreal_male.py' -v
 python3 -m unittest discover -s tests -p 'test_unreal_android_build.py' -v
 npm test
 bash scripts/verify-unreal-cloud.sh

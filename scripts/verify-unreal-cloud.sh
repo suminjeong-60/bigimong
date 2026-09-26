@@ -7,6 +7,7 @@ cd "$repo_root"
 npm test
 python3 -m unittest discover -s tests -p 'test_prepare_unreal_varco.py'
 python3 -m unittest discover -s tests -p 'test_prepare_unreal_male.py'
+python3 -m unittest discover -s tests -p 'test_stage_unreal_male.py'
 python3 -m unittest discover -s tests -p 'test_unreal_android_build.py'
 g++ -std=c++17 -Wall -Wextra -pedantic -O2 \
   tests/unreal_hatch_core_test.cpp -o /tmp/bigimong-unreal-hatch-core-test
