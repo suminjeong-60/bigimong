@@ -1,0 +1,12 @@
+{
+  "FileVersion": 3,
+  "EngineAssociation": "5.8",
+  "Category": "Games",
+  "Description": "Bigimong Unreal client migration preview",
+  "Modules": [
+    { "Name": "Bigimong", "Type": "Runtime", "LoadingPhase": "Default" }
+  ],
+  "Plugins": [
+    { "Name": "GoogleARCore", "Enabled": true }
+  ]
+}
