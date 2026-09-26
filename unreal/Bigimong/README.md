@@ -2,6 +2,12 @@
 
 이 폴더는 기존 게임의 **Unreal Engine 5.8 소스 프로젝트**입니다. 현재 홈 아바타/알을 확인하는 최소 화면이며 기존 온라인 전투, 걸음 동기화, 부화 저장, AR 바닥 배치, 게임 UI는 연결 전입니다. Unreal Editor가 없는 환경에서 파일 구조와 모델 해시는 확인했지만 프로젝트의 엔진 컴파일 및 APK 설치는 확인하지 못했습니다.
 
+## 클라우드에서 계속 개발
+
+[이 브랜치의 GitHub Codespaces 열기](https://codespaces.new/suminjeong-60/bigimong/tree/feature/unreal-migration-v0.1?quickstart=1). 처음 생성할 때 사용 계정의 GitHub Codespaces 사용량이 적용됩니다. `.devcontainer/devcontainer.json`은 Node/ Python/ C++ 소스 검사와 개발 서버 포트 전달을 준비하며 `scripts/verify-unreal-cloud.sh`를 자동 실행합니다. 이 환경은 **소스 코딩·서버 시험용**이고 Unreal Editor 및 GPU를 제공한다고 가정하지 않습니다.
+
+현재 옮긴 순수 C++ 부화 규칙은 `Source/Bigimong/Public/BigimongHatchCore.h`에 있으며 30,000점, 돌봄 2시간, 검증된 걸음의 중복 방지, 선택한 공룡 ID와 부화 단계 전환을 독립 테스트합니다. `BeginHatchDurably`는 최신 저장 상태를 다시 읽고, 공룡 ID 추첨 후 저장 결과가 불확실하면 재조회하는 **저장소·난수 인터페이스의 계약**을 테스트합니다. 실제 Unreal 저장소의 원자적 revision 비교·저장, 1~30 균등 추첨, Health Connect/서버 연결과 UI는 아직 구현·결합되지 않았습니다. 저장하지 못한 후보 상태를 성공으로 표시해서는 안 됩니다.
+
 ## VARCO 원본 모델 연결
 
 저장소 루트에서, 직접 소유한 0.3.1 APK를 지정합니다.
@@ -38,6 +44,7 @@ python3 scripts/prepare-unreal-varco.py --apk /path/to/01-BigiDragon-0.3.1-Compa
 python3 -m unittest discover -s tests -p 'test_prepare_unreal_varco.py' -v
 BIGIMONG_TEST_APK=/path/to/01-BigiDragon-0.3.1-Compatible.apk python3 -m unittest discover -s tests -p 'test_prepare_unreal_varco.py' -v
 npm test
+bash scripts/verify-unreal-cloud.sh
 ```
 
 이 검사는 Unreal 에디터·C++ 컴파일·AR 실기기 실행의 대체 증거가 아닙니다.
